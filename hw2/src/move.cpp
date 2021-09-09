@@ -53,7 +53,16 @@ void turnTowardsPoint(const geometry_msgs::Pose &currentPose,
 void moveTowardsPoint(const geometry_msgs::Pose &currentPose,
         geometry_msgs::Point &targetPoint, geometry_msgs::Twist &outputTwist) {
 
-    // TODO: Add graduated linear velocity control
-    outputTwist.linear.x = 0.1;
+    
+    double distanceToPoint = calculateDistance(currentPose.position, targetPoint);
+    double speed = MAX_SPEED;
+
+    if(distanceToPoint <= SLOW_DOWN_DISTANCE) {
+        double proportionalSpeed = distanceToPoint / SLOW_DOWN_DISTANCE * MAX_SPEED;
+        speed = std::max(MAX_SPEED * distanceToPoint, MIN_SPEED);
+    }
+    
+
+    outputTwist.linear.x = speed;
     outputTwist.angular.z = 0;
 }

@@ -16,6 +16,22 @@
  */
 #define ANGLE_TOLERANCE 0.174533
 
+
+/**
+ * Max speed of the robot
+ */
+#define MAX_SPEED 0.5
+
+/**
+ * Minimum speed of the robot
+ */
+#define MIN_SPEED 0.1
+
+/**
+ * Distance where speed starts to decrease from the max value
+ */
+#define SLOW_DOWN_DISTANCE 1
+
 /**
  * Calculate the distance between two points
  *
