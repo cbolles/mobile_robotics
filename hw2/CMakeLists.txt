@@ -15,5 +15,5 @@ include_directories(
   include/
 )
 
-add_executable(hw2 src/goto.cpp src/utils.cpp src/goto.cpp)
+add_executable(hw2 src/goto.cpp src/utils.cpp src/move.cpp)
 target_link_libraries(hw2 ${catkin_LIBRARIES})

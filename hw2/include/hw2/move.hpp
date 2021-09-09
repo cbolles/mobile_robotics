@@ -23,10 +23,12 @@
  * @param[in] targetPoint The target point of the robot
  * @return True if the robot is at the target point within tolerance
  */
-bool atPoint(geometry_msgs::Point &currentPoint, geometry_msgs::Point &targetPoint);
+bool atPoint(const geometry_msgs::Point &currentPoint, geometry_msgs::Point &targetPoint);
 
 /**
  * Check to see if the robot is pointing at a target within error.
+ *
+ * TODO: Have a graduated error based on distance to point
  *
  * @param[in] heading The Z axis rotation of the robot in radians
  * @param[in] targetPoint The target point the robot should be facing
@@ -41,5 +43,15 @@ bool pointingAtTarget(float heading, geometry_msgs::Point &targetPoint);
  * @param[in] targetPoint The target position the robot should be facing
  * @param[ouy] outputTwist The calculated velocity the robot should have.
  */
-void turnTowardsPoint(geometry_msgs::Pose &currentPose, geometry_msgs::Point &targetPoint,
-        geometry_msgs::Twist &outputTwist);
+void turnTowardsPoint(const geometry_msgs::Pose &currentPose,
+        geometry_msgs::Point &targetPoint, geometry_msgs::Twist &outputTwist);
+
+/**
+ * Move towards a point.
+ *
+ * @param[in] currentPose The current pose of the robot
+ * @param[in] targetPoint The point the robot is moving towards
+ * @param[out] outputTwist The calculated velocity the robot should have
+ */
+void moveTowardsPoint(const geometry_msgs::Pose &currentPose,
+        geometry_msgs::Point &targetPoint, geometry_msgs::Twist &outputTwist);

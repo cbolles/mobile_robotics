@@ -20,13 +20,16 @@
 std::vector<geometry_msgs::Point> targetPoints;
 
 /** The current target point */
-geometry_msgs::Point &targetPoint;
+geometry_msgs::Point *targetPoint = nullptr;
 
 /** The target point number (starting at zero) */
 int targetPointNumber = 0;
 
 /** Boolean representing if all points have been reached or not */
-bool running = true;
+bool running = false;
+
+/** Publisher for setting velocity */
+ros::Publisher velocityPublisher;
 
 
 /**
@@ -39,10 +42,11 @@ void odoCallback(const nav_msgs::Odometry &odo) {
         return;
     }
 
-    geometry_msgs::Pose &currentPose = odo.pose.pose; 
+    const geometry_msgs::Pose &currentPose = odo.pose.pose; 
+    geometry_msgs::Twist outputTwist;
 
     // Check if we have reached the current target
-    if(atPoint(currentPose.position, targetPoint)) {
+    if(atPoint(currentPose.position, *targetPoint)) {
         std::cout << "Reached point number: " << +targetPointNumber << std::endl;
 
         targetPointNumber++;
@@ -52,15 +56,18 @@ void odoCallback(const nav_msgs::Odometry &odo) {
             running = false;
         }
         else {
-            targetPoint = targetPoints[targetPointNumber];
+            targetPoint = &targetPoints[targetPointNumber];
         }
     }
     // Otherwise adjust velocity
     else {
-        if(!pointingAtTarget(pose.orientation.z, targetPoint)) {
-            turnTowardsPoint(currentPose, targetPoint,  
+        // Determine if the angle or direction should be changed
+        if(!pointingAtTarget(currentPose.orientation.z, *targetPoint)) {
+            turnTowardsPoint(currentPose, *targetPoint, outputTwist);
+        } else {
+            moveTowardsPoint(currentPose, *targetPoint, outputTwist);
         }
-    
+        velocityPublisher.publish(outputTwist);
     }
 }
 
@@ -76,10 +83,7 @@ int main(int argc, char **argv) {
 
         // Create the list of target points
         readInPoints(filePath, targetPoints); 
-
-
-        int num_seconds = std::stoi(argv[1]);
-        std::cout << "Running for: " << +num_seconds << "s" << std::endl;
+        targetPoint = &targetPoints[0];
 
         ros::init(argc, argv, "talker");
         ros::NodeHandle n;
@@ -88,6 +92,9 @@ int main(int argc, char **argv) {
         ros::Publisher motor_en_pub = n.advertise<p2os_msgs::MotorState>("/cmd_motor_state", 10);
         // Publisher for setting velocity
         ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("/r1/cmd_vel", 1000);
+
+        // Subscribe to ODO data
+        ros::Subscriber sub = n.subscribe("/r1/odom", 1000, odoCallback);
 
         // Enable motors
         p2os_msgs::MotorState state;
@@ -105,13 +112,9 @@ int main(int argc, char **argv) {
         velocity.angular.z = 0;
         vel_pub.publish(velocity);
 
-        while(ros::ok() && ) {
-                velocity.linear.x = 0.01 * loop_count;
-                velocity.angular.z = 0.01 * loop_count;
+        running = true;
 
-                vel_pub.publish(velocity);
-                
-                loop_count++;
+        while(ros::ok() && running) {
                 loop_rate.sleep();
         }
 
@@ -119,6 +122,7 @@ int main(int argc, char **argv) {
         velocity.angular.z = 0;
         vel_pub.publish(velocity);
 
+        std::cout << "Finished" << std::endl;
         loop_rate.sleep();
 
         return 0;
