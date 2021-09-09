@@ -29,9 +29,17 @@ bool pointingAtTarget(const geometry_msgs::Pose &currentPose,
         geometry_msgs::Point &targetPoint) {
 
     double angleBetween = calculateAngle(currentPose.position, targetPoint);
-    double heading = 2 * atan2(currentPose.orientation.z, currentPose.orientation.w);
+    double currentHeading = 2 * atan2(currentPose.orientation.z, currentPose.orientation.w);
 
-    return abs(heading - angleBetween) <= ANGLE_TOLERANCE;
+    double angleDiff = fmod((angleBetween - currentHeading), (2 * M_PI));
+    if(angleDiff < 0 && abs(angleDiff) > (2 * M_PI + angleDiff)) {
+        angleDiff = 2 * M_PI + angleDiff;
+    }
+    else if(angleDiff > abs(angleDiff - 2 * M_PI)) {
+        angleDiff = angleDiff - 2 * M_PI;
+    }
+
+    return abs(angleDiff) <= ANGLE_TOLERANCE;
 }
 
 void turnTowardsPoint(const geometry_msgs::Pose &currentPose,

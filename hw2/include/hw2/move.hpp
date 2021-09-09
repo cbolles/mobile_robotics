@@ -36,7 +36,7 @@
 /**
  * Max angular speed of the robot
  */
-#define MAX_ANGULAR_SPEED 1
+#define MAX_ANGULAR_SPEED 0.5
 
 /**
  * Minimum angular speed of the robot
