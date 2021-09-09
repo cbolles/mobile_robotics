@@ -54,6 +54,15 @@ void odoCallback(const nav_msgs::Odometry &odo) {
     if(atPoint(currentPose.position, *targetPoint)) {
         std::cout << "Reached point number: " << +targetPointNumber << std::endl;
 
+        std::cout << "Goal X: " << +targetPoint->x << " Goal Y: " << +targetPoint-> y <<
+            std::endl;
+        std::cout << "X Pos: " << +currentPose.position.x << " Y Pos: " <<
+            +currentPose.position.y << std::endl;
+
+        double error = calculateDistance(currentPose.position, *targetPoint);
+        std::cout << "Error: " << +error << std::endl << std::endl;
+
+
         targetPointNumber++;
 
         // Check if we are done
