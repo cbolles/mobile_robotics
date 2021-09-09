@@ -53,4 +53,7 @@ void turnTowardsPoint(const geometry_msgs::Pose &currentPose,
 void moveTowardsPoint(const geometry_msgs::Pose &currentPose,
         geometry_msgs::Point &targetPoint, geometry_msgs::Twist &outputTwist) {
 
+    // TODO: Add graduated linear velocity control
+    outputTwist.linear.x = 0.1;
+    outputTwist.angular.z = 0;
 }
