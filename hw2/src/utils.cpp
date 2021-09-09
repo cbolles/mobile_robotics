@@ -19,6 +19,8 @@ void readInPoints(std::string &filePath, std::vector<geometry_msgs::Point> &poin
         point.x = x;
         point.y = y;
         point.z = 0;
+
+        points.push_back(point);
     }
 
 }

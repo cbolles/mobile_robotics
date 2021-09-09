@@ -1,4 +1,5 @@
 #include "ros/ros.h"
+#include <ros/console.h>
 #include "p2os_msgs/MotorState.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Pose.h"
@@ -37,8 +38,12 @@ ros::Publisher velocityPublisher;
  * the velocity of the robot to adjust itself to the next target point.
  */
 void odoCallback(const nav_msgs::Odometry &odo) {
-    // If we aren't running, do nothin g
+    // If we aren't running, do nothing
     if(!running) {
+        geometry_msgs::Twist velocity;
+        velocity.linear.x = 0;
+        velocity.angular.z = 0;
+        velocityPublisher.publish(velocity);
         return;
     }
 
@@ -53,6 +58,7 @@ void odoCallback(const nav_msgs::Odometry &odo) {
 
         // Check if we are done
         if(targetPointNumber >= targetPoints.size()) {
+            ROS_DEBUG("All points reached, stopping");
             running = false;
         }
         else {
@@ -62,11 +68,12 @@ void odoCallback(const nav_msgs::Odometry &odo) {
     // Otherwise adjust velocity
     else {
         // Determine if the angle or direction should be changed
-        if(!pointingAtTarget(currentPose.orientation.z, *targetPoint)) {
+        if(!pointingAtTarget(currentPose, *targetPoint)) {
             turnTowardsPoint(currentPose, *targetPoint, outputTwist);
         } else {
             moveTowardsPoint(currentPose, *targetPoint, outputTwist);
         }
+        ROS_DEBUG("Updating velocity");
         velocityPublisher.publish(outputTwist);
     }
 }
@@ -85,13 +92,14 @@ int main(int argc, char **argv) {
         readInPoints(filePath, targetPoints); 
         targetPoint = &targetPoints[0];
 
+
         ros::init(argc, argv, "talker");
         ros::NodeHandle n;
 
         // Publisher for enabling motors
         ros::Publisher motor_en_pub = n.advertise<p2os_msgs::MotorState>("/cmd_motor_state", 10);
         // Publisher for setting velocity
-        ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("/r1/cmd_vel", 1000);
+        velocityPublisher = n.advertise<geometry_msgs::Twist>("/r1/cmd_vel", 1000);
 
         // Subscribe to ODO data
         ros::Subscriber sub = n.subscribe("/r1/odom", 1000, odoCallback);
@@ -110,17 +118,12 @@ int main(int argc, char **argv) {
         // Make sure the robot starts out not moving
         velocity.linear.x = 0;
         velocity.angular.z = 0;
-        vel_pub.publish(velocity);
+        velocityPublisher.publish(velocity);
 
         running = true;
 
-        while(ros::ok() && running) {
-                loop_rate.sleep();
-        }
 
-        velocity.linear.x = 0;
-        velocity.angular.z = 0;
-        vel_pub.publish(velocity);
+        ros::spin(); 
 
         std::cout << "Finished" << std::endl;
         loop_rate.sleep();

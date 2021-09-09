@@ -17,6 +17,25 @@
 #define ANGLE_TOLERANCE 0.174533
 
 /**
+ * Calculate the distance between two points
+ *
+ * @param point1 The first point
+ * @param point2 The second point
+ */
+double calculateDistance(const geometry_msgs::Point &point1,
+        const geometry_msgs::Point &point2);
+
+
+/**
+ * Determines the angle between two points.
+ *
+ * @param point1 The first point
+ * @param point2 The second point
+ */
+double calculateAngle(const geometry_msgs::Point &point1,
+        const geometry_msgs::Point &point2);
+
+/**
  * Check to see if a robot is at the given point within tolerance.
  *
  * @param[in] currentPoint The current position of the robot
@@ -30,10 +49,11 @@ bool atPoint(const geometry_msgs::Point &currentPoint, geometry_msgs::Point &tar
  *
  * TODO: Have a graduated error based on distance to point
  *
- * @param[in] heading The Z axis rotation of the robot in radians
+ * @param[in] currentPose The pose of the robot
  * @param[in] targetPoint The target point the robot should be facing
  */
-bool pointingAtTarget(float heading, geometry_msgs::Point &targetPoint);
+bool pointingAtTarget(const geometry_msgs::Pose &currentPose,
+        geometry_msgs::Point &targetPoint);
 
 /**
  * Calculate the velocity to have the robot turn towards a point. This will have no
