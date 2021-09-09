@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(hw1)
+project(hw2)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -11,9 +11,9 @@ catkin_package(
 )
 
 include_directories(
-# include
   ${catkin_INCLUDE_DIRS}
+  include/
 )
 
-add_executable(hw1 src/hw1.cpp)
-target_link_libraries(hw1 ${catkin_LIBRARIES})
+add_executable(hw2 src/goto.cpp src/utils.cpp src/goto.cpp)
+target_link_libraries(hw2 ${catkin_LIBRARIES})
