@@ -43,11 +43,26 @@ void turnTowardsPoint(const geometry_msgs::Pose &currentPose,
     double angleBetween = calculateAngle(currentPose.position, targetPoint);
     double currentHeading = 2 * atan2(currentPose.orientation.z, currentPose.orientation.w);
 
+    double angleDiff = fmod((angleBetween - currentHeading), (2 * M_PI));
+    if(angleDiff < 0 && abs(angleDiff) > (2 * M_PI + angleDiff)) {
+        angleDiff = 2 * M_PI + angleDiff;
+    }
+    else if(angleDiff > abs(angleDiff - 2 * M_PI)) {
+        angleDiff = angleDiff - 2 * M_PI;
+    }
+
+    double speed = MAX_ANGULAR_SPEED;
+    if(abs(angleDiff) <= SLOW_DOWN_ANGLE) {
+        double proportionalSpeed = abs(angleDiff) / SLOW_DOWN_ANGLE * MAX_ANGULAR_SPEED;
+        speed = std::max(proportionalSpeed, MIN_ANGULAR_SPEED);
+    }
+    
+
     // TODO: Add graduated angular velocity control
-    if(currentHeading > angleBetween)
-        outputTwist.angular.z = -0.1;
+    if(angleDiff < 0)
+        outputTwist.angular.z = -speed;
     else
-        outputTwist.angular.z = 0.1;
+        outputTwist.angular.z = speed;
 }
 
 void moveTowardsPoint(const geometry_msgs::Pose &currentPose,
@@ -59,7 +74,7 @@ void moveTowardsPoint(const geometry_msgs::Pose &currentPose,
 
     if(distanceToPoint <= SLOW_DOWN_DISTANCE) {
         double proportionalSpeed = distanceToPoint / SLOW_DOWN_DISTANCE * MAX_SPEED;
-        speed = std::max(MAX_SPEED * distanceToPoint, MIN_SPEED);
+        speed = std::max(proportionalSpeed, MIN_SPEED);
     }
     
 

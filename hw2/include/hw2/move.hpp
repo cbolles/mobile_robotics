@@ -32,6 +32,22 @@
  */
 #define SLOW_DOWN_DISTANCE 1
 
+
+/**
+ * Max angular speed of the robot
+ */
+#define MAX_ANGULAR_SPEED 1
+
+/**
+ * Minimum angular speed of the robot
+ */
+#define MIN_ANGULAR_SPEED 0.05
+
+/**
+ * Angular difference to target angle at which to slow down
+ */
+#define SLOW_DOWN_ANGLE 0.5
+
 /**
  * Calculate the distance between two points
  *
@@ -83,7 +99,11 @@ void turnTowardsPoint(const geometry_msgs::Pose &currentPose,
         geometry_msgs::Point &targetPoint, geometry_msgs::Twist &outputTwist);
 
 /**
- * Move towards a point.
+ * Move towards a point. The speed will have a relation to the distance from the point.
+ *
+ * For distances > SLOW_DOWN_DISTANCE, the robot will go at MAX_SPEED.
+ * For distanced <= SLOW_DOWN_DISTANCE, the robot will move at distance / SLOW_DOWN_DISTANCE
+ *  of the MAX_SPEED.
  *
  * @param[in] currentPose The current pose of the robot
  * @param[in] targetPoint The point the robot is moving towards
