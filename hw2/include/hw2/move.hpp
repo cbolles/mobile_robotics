@@ -8,13 +8,13 @@
 /**
  * Maximum distance the robot is allowed to be from its target point in meters
  */
-#define DISTANCE_TOLERANCE 0.1
+#define DISTANCE_TOLERANCE 0.05
 
 /**
  * Maximum amount of error between angle to point and the actual angle.
- * ~10 degrees.
+ * ~5 degrees.
  */
-#define ANGLE_TOLERANCE 0.174533
+#define ANGLE_TOLERANCE 0.0872665
 
 
 /**
