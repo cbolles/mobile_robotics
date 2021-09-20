@@ -47,11 +47,10 @@ void odoCallback(const nav_msgs::Odometry &odo) {
     // Update robot state
     robot->setPose(odo.pose.pose);
 
-    std::cout << "HERE" << std::endl;
-
     if(!running) {
         // Make sure the robot isn't moving
         robot->stop();
+        return;
     }
 
     geometry_msgs::Point* targetPoint = &targetPoints[targetPointIndex];
@@ -104,6 +103,9 @@ int main(int argc, char** argv) {
     ros::Publisher velocityPublisher = n.advertise<geometry_msgs::Twist>
         ("/r1/cmd_vel", 1000);
     
+    // Subscribe to ODO data
+    ros::Subscriber sub = n.subscribe("/r1/odom", 1000, odoCallback);
+
     // Setup robot
     robot = new Robot(velocityPublisher);
 
@@ -117,7 +119,7 @@ int main(int argc, char** argv) {
 
     running = true;
 
-    ros::spin(); 
+    ros::spin();
 
     robot->stop();
     std::cout << "Finished" << std::endl;
