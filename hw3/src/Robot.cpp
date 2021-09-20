@@ -52,7 +52,7 @@ const geometry_msgs::Pose& Robot::getPose() {
     return pose;
 }
 
-void Robot::setPose(geometry_msgs::Pose& pose) {
+void Robot::setPose(const geometry_msgs::Pose& pose) {
     this->pose = pose;
 }
 
@@ -79,7 +79,7 @@ double Robot::getDistance(const geometry_msgs::Point& point) {
     return calculateDistance(pose.position, point);
 }
 
-void Robot::turnToPoint(const geometry_msgs::Point& point) {
+void Robot::turnTowardsPoint(const geometry_msgs::Point& point) {
     geometry_msgs::Twist twist;
 
     double angleBetween = calculateAngle(pose.position, point);
@@ -96,7 +96,8 @@ void Robot::turnToPoint(const geometry_msgs::Point& point) {
     double speed = MAX_ANGULAR_SPEED;
     if(abs(angleDiff) <= SLOW_DOWN_ANGLE) {
         double proportionalSpeed = abs(angleDiff) / SLOW_DOWN_ANGLE * MAX_ANGULAR_SPEED;
-        speed = std::max(proportionalSpeed, MIN_ANGULAR_SPEED);
+        double min = MIN_ANGULAR_SPEED;
+        speed = std::max(proportionalSpeed, min);
     }
 
     if(angleDiff < 0)
@@ -115,7 +116,8 @@ void Robot::moveTowardsPoint(const geometry_msgs::Point& point) {
 
     if(distanceToPoint <= SLOW_DOWN_DISTANCE) {
         double proportionalSpeed = distanceToPoint / SLOW_DOWN_DISTANCE * MAX_SPEED;
-        speed = std::max(proportionalSpeed, MIN_SPEED);
+        double min = MIN_SPEED;
+        speed = std::max(proportionalSpeed, min);
     }
     
     twist.linear.x = speed;
@@ -124,7 +126,7 @@ void Robot::moveTowardsPoint(const geometry_msgs::Point& point) {
     velocityPublisher->publish(twist);
 }
 
-void Robot::unsafeGoTo(cost geometry_msgs::Point& point) {
+void Robot::unsafeGoTo(const geometry_msgs::Point& point) {
     // Check if we are alread at the pint
     if(isAtPoint(point))
         return;

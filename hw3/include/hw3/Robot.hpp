@@ -1,3 +1,4 @@
+#include "ros/ros.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Point.h"
 
@@ -20,9 +21,11 @@
 class Robot {
 public:
     /**
-     * Initiate the robot
+     * Initiate the robot.
+     * 
+     * @param velocityPublisher The ROS topic publisher to control velocity
      */
-    Robot();
+    Robot(ros::Publisher& velocityPublisher);
 
     /**
      * Get the current pose of the robot that is stored.
@@ -36,7 +39,7 @@ public:
      * 
      * @param pose The pose of the robot to set.
      */
-    void setPose(geometry_msgs::Pose& pose);
+    void setPose(const geometry_msgs::Pose& pose);
 
     /**
 
@@ -78,7 +81,7 @@ public:
      * 
      * @param point The point to turn towards.
      */
-    void turnToPoint(const geometry_msgs::Point& point);
+    void turnTowardsPoint(const geometry_msgs::Point& point);
 
     /**
      * Adjust the robots velocity so that it is moving towards the given point.
@@ -102,7 +105,7 @@ public:
      * 
      * @param point The point to goto.
      */
-    void unsafeGoTo(cost geometry_msgs::Point& point);
+    void unsafeGoTo(const geometry_msgs::Point& point);
 
     /**
      * Have the robot stop moving, both angularly and linearly
@@ -113,19 +116,25 @@ private:
     /** The current pose of the robot */
     geometry_msgs::Pose pose;
     /** The publisher to use to set the velocity of the robot */
-    rost::Publisher* velocityPublisher;
+    ros::Publisher* velocityPublisher;
 
     /** The tolerance for what is considering point at (5 degrees) */
     static constexpr double ANGLE_TOLERANCE = 0.0872665;
     /** Tolerance for how close the robot needs to be to a point in meters */
     static constexpr double DISTANCE_TOLERANCE = 0.05;
-    /** Maximum angular speed of the robot in radians/s */
-    static constexpr double MAX_ANGULAR_SPEED = 0.5;
+    
     /** The minimum angular speed of the robot in radians/s */
     static constexpr double MIN_ANGULAR_SPEED = 0.05;
-    /** Maximum linear speed of the robot in meters/s */
-    static constexpr double MAX_SPEED = 0.5;
+    /** Maximum angular speed of the robot in radians/s */
+    static constexpr double MAX_ANGULAR_SPEED = 0.5;
+    /** The angle at which to start slowing down */
+    static constexpr double SLOW_DOWN_ANGLE = 0.5;
+    
     /** The minimum linear speed of the robot in meters/s */
     static constexpr double MIN_SPEED = 0.1;
+    /** Maximum linear speed of the robot in meters/s */
+    static constexpr double MAX_SPEED = 0.5;
+    /** The distance from a point to start slowing down */
+    static constexpr double SLOW_DOWN_DISTANCE = 1;
 
-}
+};

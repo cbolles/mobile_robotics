@@ -5,6 +5,7 @@
 #include "nav_msgs/Odometry.h"
 
 #include "hw3/utils.hpp"
+#include "hw3/Robot.hpp"
 
 #include <iostream>
 #include <vector>
@@ -46,21 +47,23 @@ void odoCallback(const nav_msgs::Odometry &odo) {
     // Update robot state
     robot->setPose(odo.pose.pose);
 
+    std::cout << "HERE" << std::endl;
+
     if(!running) {
         // Make sure the robot isn't moving
         robot->stop();
     }
 
-    geometry_msgs::Point targetPoint = &targetPoints[targetPointIndex];
+    geometry_msgs::Point* targetPoint = &targetPoints[targetPointIndex];
 
     // Check if the target point needs to be updated
-    if(robot->isAtPoint(targetPoint)) {
+    if(robot->isAtPoint(*targetPoint)) {
         std::cout << "Reached point number: " << +targetPointIndex << std::endl;
 
         std::cout << "Goal X: " << +targetPoint->x << " Goal Y: " << +targetPoint-> y <<
         std::endl;
-        std::cout << "X Pos: " << +currentPose.position.x << " Y Pos: " <<
-            +currentPose.position.y << std::endl;
+        std::cout << "X Pos: " << +robot->getPose().position.x << " Y Pos: " <<
+            +robot->getPose().position.y << std::endl;
 
         double error = robot->getDistance(*targetPoint);
         std::cout << "Error: " << +error << std::endl << std::endl;
@@ -75,7 +78,7 @@ void odoCallback(const nav_msgs::Odometry &odo) {
 
     // Otherwise update robot velocity
     else {
-        robot->unsafeGoTo
+        robot->unsafeGoTo(*targetPoint);
     }
 }
 
@@ -93,7 +96,7 @@ int main(int argc, char** argv) {
 
     // Init ros
     ros::init(argc, argv, "safegoto");
-    ros::NodeHandler n;
+    ros::NodeHandle n;
 
     // Setup publishers
     ros::Publisher motorEnablePublisher = n.advertise<p2os_msgs::MotorState>
@@ -114,10 +117,7 @@ int main(int argc, char** argv) {
 
     running = true;
 
-    while(running) {
-        ros::spinOnce();
-        loopRate.sleep();
-    }
+    ros::spin(); 
 
     robot->stop();
     std::cout << "Finished" << std::endl;

@@ -15,5 +15,5 @@ include_directories(
   include/
 )
 
-add_executable(hw3 src/goto.cpp src/utils.cpp src/move.cpp)
+add_executable(hw3 src/safegoto.cpp src/utils.cpp src/Robot.cpp)
 target_link_libraries(hw3 ${catkin_LIBRARIES})
