@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Point.h"
+#include "sensor_msgs/LaserScan.h"
 
 /**
  * Representation of the functionality the robot has. Controls the robot via
@@ -40,6 +41,13 @@ public:
      * @param pose The pose of the robot to set.
      */
     void setPose(const geometry_msgs::Pose& pose);
+
+    /**
+     * Set the most recent laser scan from the robot.
+     * 
+     * @param laserScan The most recent laser scan.
+     */
+    void setLaserScan(const sensor_msgs::LaserScan& laserScan);
 
     /**
 
@@ -108,6 +116,27 @@ public:
     void unsafeGoTo(const geometry_msgs::Point& point);
 
     /**
+     * Determines if there is an obstacle directly in front of the robot.
+     * An obstacles is defined as any space that the robot cannot drive
+     * through.
+     * 
+     * The obstacle is also defined as being within a set distance from the
+     * robot.
+     * 
+     * @return True if there is an obstancle within some distance from the robot
+     */
+    bool obstacleInWay();
+
+    /**
+     * "Safe goto". This will have the robot follow a naive approach of the
+     * bug algorithm. Once a wall is reached, the robot will move along the
+     * wall until it can move in a straight line again.
+     * 
+     * @param point The point to goto.
+     */
+    void saveGoTo(const geometry_msgs::Point& point);
+
+    /**
      * Have the robot stop moving, both angularly and linearly
      */
     void stop();
@@ -115,6 +144,8 @@ public:
 private:
     /** The current pose of the robot */
     geometry_msgs::Pose pose;
+    /** The most recent laserr scan from the robot */
+    sensor_msgs::LaserScan laserScan;
     /** The publisher to use to set the velocity of the robot */
     ros::Publisher* velocityPublisher;
 
@@ -136,5 +167,11 @@ private:
     static constexpr double MAX_SPEED = 0.5;
     /** The distance from a point to start slowing down */
     static constexpr double SLOW_DOWN_DISTANCE = 1;
+
+    /** Distance away from the robot where objects become potential obstacles */
+    static constexpr double MIN_OBSTACLE_DISTANCE = 0.5;
+
+    /** Number of values in the laser scan */
+    static constexpr int NUM_LASER_POINTS = 640;
 
 };

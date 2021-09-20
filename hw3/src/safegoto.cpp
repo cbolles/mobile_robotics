@@ -3,6 +3,7 @@
 #include "p2os_msgs/MotorState.h"
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Odometry.h"
+#include "sensor_msgs/LaserScan.h"
 
 #include "hw3/utils.hpp"
 #include "hw3/Robot.hpp"
@@ -81,6 +82,14 @@ void odoCallback(const nav_msgs::Odometry &odo) {
     }
 }
 
+/**
+ * This call back just updates the robot's state.
+ */
+void kinectCallback(const sensor_msgs::LaserScan &laserScan) {
+    // Update robot state
+    robot->setLaserScan(laserScan);
+}
+
 int main(int argc, char** argv) {
     // Get the file path of the points from the user
     if(argc < 2) {
@@ -103,8 +112,10 @@ int main(int argc, char** argv) {
     ros::Publisher velocityPublisher = n.advertise<geometry_msgs::Twist>
         ("/r1/cmd_vel", 1000);
     
-    // Subscribe to ODO data
+    // Subscribe to robot state
     ros::Subscriber sub = n.subscribe("/r1/odom", 1000, odoCallback);
+    ros::Subscriber laserSub = n.subscribe("/r1/kinect_laser/scan", 1000,
+        kinectCallback);
 
     // Setup robot
     robot = new Robot(velocityPublisher);

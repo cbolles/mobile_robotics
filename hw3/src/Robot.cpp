@@ -56,6 +56,10 @@ void Robot::setPose(const geometry_msgs::Pose& pose) {
     this->pose = pose;
 }
 
+void Robot::setLaserScan(const sensor_msgs::LaserScan& laserScan) {
+    this->laserScan = laserScan;
+}
+
 bool Robot::isPointingAt(const geometry_msgs::Point& point) {
     double angleBetween = calculateAngle(pose.position, point);
     double currentHeading = 2 * atan2(pose.orientation.z, pose.orientation.w);
@@ -127,7 +131,7 @@ void Robot::moveTowardsPoint(const geometry_msgs::Point& point) {
 }
 
 void Robot::unsafeGoTo(const geometry_msgs::Point& point) {
-    // Check if we are alread at the pint
+    // Check if we are alread at the point
     if(isAtPoint(point))
         return;
 
@@ -139,6 +143,29 @@ void Robot::unsafeGoTo(const geometry_msgs::Point& point) {
 
     // Move towards point
     moveTowardsPoint(point);
+}
+
+bool Robot::obstacleInWay() {
+    float middleValue = laserScan.ranges[NUM_LASER_POINTS / 2];
+
+    if(middleValue < MIN_OBSTACLE_DISTANCE) {
+        return true;
+    }
+
+}
+
+void Robot::saveGoTo(const geometry_msgs::Point& point) {
+    // Check if we are already at the point
+    if(isAtPoint(point))
+        return;
+
+    // If obstacle in way, bug around the obstacle
+    if(obstacleInWay()) {
+        // Implement bug algorithm
+    }
+    else {
+        unsafeGoTo(point);
+    }
 }
 
 void Robot::stop() {
