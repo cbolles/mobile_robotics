@@ -20,6 +20,11 @@
 class Robot {
 public:
     /**
+     * Initiate the robot
+     */
+    Robot();
+
+    /**
      * Get the current pose of the robot that is stored.
      *
      * @return The pose of the robot
@@ -42,7 +47,7 @@ public:
      * @param point The point to check if the robot is point at
      * @return True if the robot is pointing at that point within tolerance.
      */
-    bool isPointingAt(const geometry_msgs::Point point);
+    bool isPointingAt(const geometry_msgs::Point& point);
 
     /**
      * Determine if the robot is at a given point within tolerance. This will
@@ -52,7 +57,15 @@ public:
      * @param point The point to check if the robot is at
      * @return True if the robot is at that point
      */
-    bool isAtPoint(const geometry_msgs::Point point);
+    bool isAtPoint(const geometry_msgs::Point& point);
+
+    /**
+     * Get the distance to a given point.
+     * 
+     * @param point The point to get the distance from
+     * @return The distance in meters.
+     */
+    double getDistance(const geometry_msgs::Point& point);
 
     /**
      * Adjust the robots velocity so that it is turning to the given point.
@@ -65,7 +78,7 @@ public:
      * 
      * @param point The point to turn towards.
      */
-    void turnToPoint(const geometry_msgs::Point point);
+    void turnToPoint(const geometry_msgs::Point& point);
 
     /**
      * Adjust the robots velocity so that it is moving towards the given point.
@@ -76,7 +89,7 @@ public:
      * 
      * @param point The point to move towards.
      */
-    void moveTowardsPoint(const geometry_msgs::Point point);
+    void moveTowardsPoint(const geometry_msgs::Point& point);
 
     /**
      * "Unsafe goto". This will have the robot go towards a give point
@@ -89,15 +102,30 @@ public:
      * 
      * @param point The point to goto.
      */
-    void goToUnsafe(cost geometry_msgs::Point point);
+    void unsafeGoTo(cost geometry_msgs::Point& point);
+
+    /**
+     * Have the robot stop moving, both angularly and linearly
+     */
+    void stop();
 
 private:
     /** The current pose of the robot */
     geometry_msgs::Pose pose;
+    /** The publisher to use to set the velocity of the robot */
+    rost::Publisher* velocityPublisher;
 
     /** The tolerance for what is considering point at (5 degrees) */
     static constexpr double ANGLE_TOLERANCE = 0.0872665;
     /** Tolerance for how close the robot needs to be to a point in meters */
     static constexpr double DISTANCE_TOLERANCE = 0.05;
+    /** Maximum angular speed of the robot in radians/s */
+    static constexpr double MAX_ANGULAR_SPEED = 0.5;
+    /** The minimum angular speed of the robot in radians/s */
+    static constexpr double MIN_ANGULAR_SPEED = 0.05;
+    /** Maximum linear speed of the robot in meters/s */
+    static constexpr double MAX_SPEED = 0.5;
+    /** The minimum linear speed of the robot in meters/s */
+    static constexpr double MIN_SPEED = 0.1;
 
 }
