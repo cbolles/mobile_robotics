@@ -257,11 +257,11 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
         }
         else {
             // Check distance to obstacle to adjust angular velocity
-            if(sonarArray.ranges[0] > OBSTACLE_DISTANCE) {
+            if(sonarArray.ranges[1] > OBSTACLE_DISTANCE) {
                 twist.angular.z = -0.5;
                 std::cout << "TURNING TOWARDS" << std::endl;
             }
-            else if(sonarArray.ranges[0] < OBSTACLE_DISTANCE - 0.5){
+            else if(sonarArray.ranges[1] < OBSTACLE_DISTANCE - 0.5){
                 twist.angular.z = 0.5;
                 std::cout << "TURNING AWAY" << std::endl;
             }
