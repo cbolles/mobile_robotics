@@ -146,15 +146,41 @@ void Robot::unsafeGoTo(const geometry_msgs::Point& point) {
 }
 
 bool Robot::obstacleInWay() {
-    float middleValue = laserScan.ranges[NUM_LASER_POINTS / 2];
+    // Since the number of points is known to be an even number, this is
+    // assuming that no laser value represents directly in front of the robot.
+    // Instead there will be laser values immediatly to the left and right
+    // of the middle at LaserScan.angle_increment / 2 from straight ahead
+    int rightIndex = NUM_LASER_POINTS / 2;
+    int leftIndex = NUM_LASER_POINTS / 2 - 1;
 
-    if(middleValue < MIN_OBSTACLE_DISTANCE) {
-        return true;
+    // Find the number of points that need to be checked in front of the robot.
+    // This is found by finding the laser number that will have the angle
+    // difference from directly in front of the robot such that the equation
+    // applies.
+    // cos(A) = H / R where A is the angle between zero degrees realtive to the
+    // robot's x axis, H is the max distance away an obstacle needs to be for
+    // it to be detected, and R is half of the robot's width.
+    // To solve for A, I applied A = PI/2 - (i * a). Where i is the effective
+    // index value from the center and a is the angle between laser values.
+    float pointsToCheck = laserScan.angle_increment *
+        (M_PI/2.0 - acos(OBSTACLE_DISTANCE / ROBOT_WIDTH / 2));
+
+    int numPointsToCheck = ceil(pointsToCheck);
+
+    for(int i = 0; i < numPointsToCheck; i++) {
+        // Check to the left and right side, if either of them detect an
+        // obstancle, assume there is an obstacle.
+        // NOTE: This is problematic when dealinging with noisy sensors!
+        if(laserScan.ranges[rightIndex + i] < OBSTACLE_DISTANCE)
+            return true;
+        if(laserScan.ranges[leftIndex + i] < OBSTACLE_DISTANCE)
+            return true;
     }
 
+    return false;
 }
 
-void Robot::saveGoTo(const geometry_msgs::Point& point) {
+void Robot::safeGoTo(const geometry_msgs::Point& point) {
     // Check if we are already at the point
     if(isAtPoint(point))
         return;

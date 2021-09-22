@@ -134,7 +134,7 @@ public:
      * 
      * @param point The point to goto.
      */
-    void saveGoTo(const geometry_msgs::Point& point);
+    void safeGoTo(const geometry_msgs::Point& point);
 
     /**
      * Have the robot stop moving, both angularly and linearly
@@ -169,7 +169,10 @@ private:
     static constexpr double SLOW_DOWN_DISTANCE = 1;
 
     /** Distance away from the robot where objects become potential obstacles */
-    static constexpr double MIN_OBSTACLE_DISTANCE = 0.5;
+    static constexpr double OBSTACLE_DISTANCE = 1;
+
+    /** The width of the robot in meters */
+    static constexpr double ROBOT_WIDTH = 1;
 
     /** Number of values in the laser scan */
     static constexpr int NUM_LASER_POINTS = 640;
