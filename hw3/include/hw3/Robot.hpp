@@ -202,6 +202,8 @@ private:
     RobotMotionState motionState;
     /** Helper for bug algorithm */
     struct Line targetLine;
+    /** Helper for previous points */
+    geometry_msgs::Point previousPoint;
 
     /**
      * Logic for free, un-obstructed motion, will also check for the need

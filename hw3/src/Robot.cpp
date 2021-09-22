@@ -56,6 +56,32 @@ static double distancePointToLine(const geometry_msgs::Point& point,
     return numerator / denominator;
 }
 
+/**
+ * Check if a point is to the left of the robot, if not assume the point is
+ * to the right of the robot.
+ * 
+ * @param pose The current pose of the bot
+ * @param point The point in question
+ * @return True if the point is to the left of the robot
+ */
+static bool pointToLeft(const geometry_msgs::Pose& pose, const geometry_msgs::Point& point) {
+    double angleBetween = calculateAngle(pose.position, point);
+    double currentHeading = 2 * atan2(pose.orientation.z, pose.orientation.w);
+
+    double angleDiff = fmod((angleBetween - currentHeading), (2 * M_PI));
+    if(angleDiff < 0 && abs(angleDiff) > (2 * M_PI + angleDiff)) {
+        angleDiff = 2 * M_PI + angleDiff;
+    }
+    else if(angleDiff > abs(angleDiff - 2 * M_PI)) {
+        angleDiff = angleDiff - 2 * M_PI;
+    }
+
+    if(angleDiff < 0)
+        return true;
+    else
+        return false;
+}
+
 
 /*******************************************************************************
  * Robot class implementation
@@ -217,6 +243,8 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
             (point.y - pose.position.y);
         targetLine.intercept = point.y - targetLine.slope * point.x;
 
+        previousPoint = pose.position;
+
         stop();
         return;
     }
@@ -232,9 +260,15 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
         return;
     }
 
-    #if 0
     // Check if we have re-reached the direct line to the target
-    if(distancePointToLine(point, targetLine) > DISTANCE_TOLERANCE) {
+    // TODO: Check if path to left is clear
+    std::cout << "DISTANCE: " << distancePointToLine(point, targetLine) << std::endl;
+
+    if(pointToLeft(pose, point) && 
+       sonarArray.ranges[5] > OBSTACLE_DISTANCE &&
+       distancePointToLine(point, targetLine) <= DISTANCE_TOLERANCE &&
+       calculateDistance(pose.position, previousPoint) > 1) {
+        
         // First turn towards the goal
         if(!isPointingAt(point)) {
             turnTowardsPoint(point);
@@ -244,7 +278,7 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
             motionState = RobotMotionState::FREE_MOTION;
         }
     }
-    #endif
+    else {
     // Otherwise bug around target
         geometry_msgs::Twist twist;
 
@@ -268,6 +302,7 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
             twist.linear.x = 0.2;
             velocityPublisher->publish(twist);
         }
+    }
 
 }
 
