@@ -40,6 +40,22 @@ static double calculateAngle(const geometry_msgs::Point &point1,
     return atan2(yDiff, xDiff);
 }
 
+/**
+ * Calculate the distance between a point and a line.
+ * 
+ * @param point The point to calculate the distance for
+ * @param line The line
+ * @return The distance between them
+ */
+static double distancePointToLine(const geometry_msgs::Point& point,
+    struct Line& line) {
+
+    double numerator = abs(-1 * line.slope * point.x + point.y - line.intercept);
+    double denominator = sqrt(pow(-1 * line.slope, 2) + 1);
+
+    return numerator / denominator;
+}
+
 
 /*******************************************************************************
  * Robot class implementation
@@ -59,6 +75,10 @@ void Robot::setPose(const geometry_msgs::Pose& pose) {
 
 void Robot::setLaserScan(const sensor_msgs::LaserScan& laserScan) {
     this->laserScan = laserScan;
+}
+
+void Robot::setSonarArray(const p2os_msgs::SonarArray& sonarArray) {
+    this->sonarArray = sonarArray;
 }
 
 bool Robot::isPointingAt(const geometry_msgs::Point& point) {
@@ -191,6 +211,13 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
     // Check if the robot has meet an obstacle (to RobotMotionState::BUG)
     if(obstacleInWay()) {
         motionState = RobotMotionState::BUG;
+
+        // Determine line from current point to target
+        targetLine.slope = static_cast<float>(point.x - pose.position.x) /
+            (point.y - pose.position.y);
+        targetLine.intercept = point.y - targetLine.slope * point.x;
+
+        stop();
         return;
     }
 
@@ -198,8 +225,50 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
     unsafeGoTo(point);
 }
 
-void Robot::bugMotionLogic() {
-    
+void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
+    // Check if the robot has reached the destination
+    if(isAtPoint(point)) {
+        motionState = RobotMotionState::STOP;
+        return;
+    }
+
+    #if 0
+    // Check if we have re-reached the direct line to the target
+    if(distancePointToLine(point, targetLine) > DISTANCE_TOLERANCE) {
+        // First turn towards the goal
+        if(!isPointingAt(point)) {
+            turnTowardsPoint(point);
+        }
+        // Then we are ready to try to move back towards point
+        else {
+            motionState = RobotMotionState::FREE_MOTION;
+        }
+    }
+    #endif
+    // Otherwise bug around target
+        geometry_msgs::Twist twist;
+
+        // Turn until we are not obstructed
+        if(obstacleInWay()) {
+            twist.angular.z = 0.1;
+            twist.linear.x = 0;
+            velocityPublisher->publish(twist);
+            std::cout << "IN WAY" << std::endl;
+        }
+        else {
+            // Check distance to obstacle to adjust angular velocity
+            if(sonarArray.ranges[0] > OBSTACLE_DISTANCE) {
+                twist.angular.z = -0.5;
+                std::cout << "TURNING TOWARDS" << std::endl;
+            }
+            else if(sonarArray.ranges[0] < OBSTACLE_DISTANCE - 0.5){
+                twist.angular.z = 0.5;
+                std::cout << "TURNING AWAY" << std::endl;
+            }
+            twist.linear.x = 0.2;
+            velocityPublisher->publish(twist);
+        }
+
 }
 
 void Robot::safeGoTo(const geometry_msgs::Point& point) {
@@ -208,25 +277,16 @@ void Robot::safeGoTo(const geometry_msgs::Point& point) {
             freeMotionLogic(point);
             break;
         case RobotMotionState::BUG:
-            bugMotionLogic();
+            bugMotionLogic(point);
             break;
         case RobotMotionState::STOP:
+            if(!isAtPoint(point)) {
+                motionState = RobotMotionState::FREE_MOTION;
+            }
             stop();
         default:
             // Should not get here
             break;
-    }
-
-    // Check if we are already at the point
-    if(isAtPoint(point))
-        return;
-
-    // If obstacle in way, bug around the obstacle
-    if(obstacleInWay()) {
-        // Implement bug algorithm
-    }
-    else {
-        unsafeGoTo(point);
     }
 }
 

@@ -2,6 +2,16 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Point.h"
 #include "sensor_msgs/LaserScan.h"
+#include "p2os_msgs/SonarArray.h"
+
+/**
+ * Represents a line, used for detemining direction to target after the
+ * robot started to bug
+ */
+struct Line {
+    float slope;
+    float intercept;
+};
 
 /**
  * Representation of the functionality the robot has. Controls the robot via
@@ -21,37 +31,6 @@
  */
 class Robot {
 public:
-    /**
-     * Represents the states of the robots motion logic. This allows for
-     * a state machine implementation of the motion logic with easier means
-     * to differentiate between how the robot is moving at a given time.
-     */
-    enum class RobotMotionState {
-        /**
-         * No obstacle in the robots way, can essentially move with
-         * "unsafe goto" logic.
-         * 
-         * Transitions:
-         *  TO BUG: Object detected
-         *  TO STOP: Destination reached
-         */
-        FREE_MOTION,
-        /**
-         * Moving around an obstacle. This will move around the object until
-         * it has reached a point where it can start moving back towards the
-         * target.
-         * 
-         * Transitions:
-         *  TO FREE_MOTION: Path unblocked
-         *  TO STOP: Destination reached
-         */
-        BUG,
-        /**
-         * Not moving, has reached destination.
-         */
-        STOP
-    };
-
     /**
      * Initiate the robot.
      * 
@@ -79,6 +58,13 @@ public:
      * @param laserScan The most recent laser scan.
      */
     void setLaserScan(const sensor_msgs::LaserScan& laserScan);
+
+    /**
+     * Set the most recent sonar scan from the robot.
+     * 
+     * @param sonarArray The most recent sonar scan.
+     */
+    void setSonarArray(const p2os_msgs::SonarArray& sonarArray);
 
     /**
 
@@ -173,26 +159,65 @@ public:
     void stop();
 
 private:
+    /**
+     * Represents the states of the robots motion logic. This allows for
+     * a state machine implementation of the motion logic with easier means
+     * to differentiate between how the robot is moving at a given time.
+     */
+    enum class RobotMotionState {
+        /**
+         * No obstacle in the robots way, can essentially move with
+         * "unsafe goto" logic.
+         * 
+         * Transitions:
+         *  TO BUG: Object detected
+         *  TO STOP: Destination reached
+         */
+        FREE_MOTION,
+        /**
+         * Moving around an obstacle. This will move around the object until
+         * it has reached a point where it can start moving back towards the
+         * target.
+         * 
+         * Transitions:
+         *  TO FREE_MOTION: Path unblocked
+         *  TO STOP: Destination reached
+         */
+        BUG,
+        /**
+         * Not moving, has reached destination.
+         */
+        STOP
+    };
+
     /** The current pose of the robot */
     geometry_msgs::Pose pose;
     /** The most recent laserr scan from the robot */
     sensor_msgs::LaserScan laserScan;
+    /** The most recent sonar array scan from the robot */
+    p2os_msgs::SonarArray sonarArray;
     /** The publisher to use to set the velocity of the robot */
     ros::Publisher* velocityPublisher;
     /** The state controlling the robot's motion logic */
     RobotMotionState motionState;
+    /** Helper for bug algorithm */
+    struct Line targetLine;
 
     /**
      * Logic for free, un-obstructed motion, will also check for the need
      * for transitions
+     * 
+     * @param point The point the robot is trying to reach
      */
     void freeMotionLogic(const geometry_msgs::Point& point);
 
     /**
      * Logic for the bug algorithm, will also check for the need to 
      * transition
+     * 
+     * @param point The point the robot is trying to reach
      */
-    void bugMotionLogic();
+    void bugMotionLogic(const geometry_msgs::Point& point);
 
     /** The tolerance for what is considering point at (5 degrees) */
     static constexpr double ANGLE_TOLERANCE = 0.0872665;
@@ -219,7 +244,7 @@ private:
     static constexpr double ROBOT_LENGTH = 1;
 
     /** Distance away from the robot where objects become potential obstacles */
-    static constexpr double OBSTACLE_DISTANCE = 1 - (ROBOT_LENGTH / 2);
+    static constexpr double OBSTACLE_DISTANCE = 1;
 
     /** Number of values in the laser scan */
     static constexpr int NUM_LASER_POINTS = 640;

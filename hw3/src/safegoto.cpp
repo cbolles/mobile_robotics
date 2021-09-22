@@ -1,6 +1,7 @@
 #include "ros/ros.h"
 #include "nav_msgs/Odometry.h"
 #include "p2os_msgs/MotorState.h"
+#include "p2os_msgs/SonarArray.h"
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Odometry.h"
 #include "sensor_msgs/LaserScan.h"
@@ -90,6 +91,13 @@ void kinectCallback(const sensor_msgs::LaserScan &laserScan) {
     robot->setLaserScan(laserScan);
 }
 
+/**
+ * This call back just updated the robot's state.
+ */
+void sonarCallback(const p2os_msgs::SonarArray& sonarArray) {
+    robot->setSonarArray(sonarArray);
+}
+
 int main(int argc, char** argv) {
     // Get the file path of the points from the user
     if(argc < 2) {
@@ -116,6 +124,7 @@ int main(int argc, char** argv) {
     ros::Subscriber sub = n.subscribe("/r1/odom", 1000, odoCallback);
     ros::Subscriber laserSub = n.subscribe("/r1/kinect_laser/scan", 1000,
         kinectCallback);
+    ros::Subscriber sonarSub = n.subscribe("/r1/sonar", 1000, sonarCallback);
 
     // Setup robot
     robot = new Robot(velocityPublisher);
