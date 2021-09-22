@@ -22,6 +22,37 @@
 class Robot {
 public:
     /**
+     * Represents the states of the robots motion logic. This allows for
+     * a state machine implementation of the motion logic with easier means
+     * to differentiate between how the robot is moving at a given time.
+     */
+    enum class RobotMotionState {
+        /**
+         * No obstacle in the robots way, can essentially move with
+         * "unsafe goto" logic.
+         * 
+         * Transitions:
+         *  TO BUG: Object detected
+         *  TO STOP: Destination reached
+         */
+        FREE_MOTION,
+        /**
+         * Moving around an obstacle. This will move around the object until
+         * it has reached a point where it can start moving back towards the
+         * target.
+         * 
+         * Transitions:
+         *  TO FREE_MOTION: Path unblocked
+         *  TO STOP: Destination reached
+         */
+        BUG,
+        /**
+         * Not moving, has reached destination.
+         */
+        STOP
+    };
+
+    /**
      * Initiate the robot.
      * 
      * @param velocityPublisher The ROS topic publisher to control velocity
@@ -148,6 +179,20 @@ private:
     sensor_msgs::LaserScan laserScan;
     /** The publisher to use to set the velocity of the robot */
     ros::Publisher* velocityPublisher;
+    /** The state controlling the robot's motion logic */
+    RobotMotionState motionState;
+
+    /**
+     * Logic for free, un-obstructed motion, will also check for the need
+     * for transitions
+     */
+    void freeMotionLogic(const geometry_msgs::Point& point);
+
+    /**
+     * Logic for the bug algorithm, will also check for the need to 
+     * transition
+     */
+    void bugMotionLogic();
 
     /** The tolerance for what is considering point at (5 degrees) */
     static constexpr double ANGLE_TOLERANCE = 0.0872665;
@@ -168,11 +213,13 @@ private:
     /** The distance from a point to start slowing down */
     static constexpr double SLOW_DOWN_DISTANCE = 1;
 
-    /** Distance away from the robot where objects become potential obstacles */
-    static constexpr double OBSTACLE_DISTANCE = 1;
-
     /** The width of the robot in meters */
     static constexpr double ROBOT_WIDTH = 1;
+    /** The length of the robot in meters */
+    static constexpr double ROBOT_LENGTH = 1;
+
+    /** Distance away from the robot where objects become potential obstacles */
+    static constexpr double OBSTACLE_DISTANCE = 1 - (ROBOT_LENGTH / 2);
 
     /** Number of values in the laser scan */
     static constexpr int NUM_LASER_POINTS = 640;

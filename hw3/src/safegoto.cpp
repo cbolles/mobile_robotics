@@ -54,9 +54,6 @@ void odoCallback(const nav_msgs::Odometry &odo) {
         return;
     }
 
-    std::cout << "Obstacle Detected: " << robot->obstacleInWay() << std::endl;
-
-    #if 0
     geometry_msgs::Point* targetPoint = &targetPoints[targetPointIndex];
 
     // Check if the target point needs to be updated
@@ -81,9 +78,8 @@ void odoCallback(const nav_msgs::Odometry &odo) {
 
     // Otherwise update robot velocity
     else {
-        robot->unsafeGoTo(*targetPoint);
+        robot->safeGoTo(*targetPoint);
     }
-    #endif
 }
 
 /**

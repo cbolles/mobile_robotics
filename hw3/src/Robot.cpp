@@ -46,6 +46,7 @@ static double calculateAngle(const geometry_msgs::Point &point1,
  ******************************************************************************/
 Robot::Robot(ros::Publisher& velocityPublisher) {
     this->velocityPublisher = &velocityPublisher;
+    motionState = RobotMotionState::FREE_MOTION;
 }
 
 const geometry_msgs::Pose& Robot::getPose() {
@@ -180,7 +181,42 @@ bool Robot::obstacleInWay() {
     return false;
 }
 
+void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
+    // Check if the robot has reached the destination (to RobotMotionState::STOP)
+    if(isAtPoint(point)) {
+        motionState = RobotMotionState::STOP;
+        return;
+    }
+
+    // Check if the robot has meet an obstacle (to RobotMotionState::BUG)
+    if(obstacleInWay()) {
+        motionState = RobotMotionState::BUG;
+        return;
+    }
+
+    // Otherwise, keep on going
+    unsafeGoTo(point);
+}
+
+void Robot::bugMotionLogic() {
+    
+}
+
 void Robot::safeGoTo(const geometry_msgs::Point& point) {
+    switch(motionState) {
+        case RobotMotionState::FREE_MOTION:
+            freeMotionLogic(point);
+            break;
+        case RobotMotionState::BUG:
+            bugMotionLogic();
+            break;
+        case RobotMotionState::STOP:
+            stop();
+        default:
+            // Should not get here
+            break;
+    }
+
     // Check if we are already at the point
     if(isAtPoint(point))
         return;
