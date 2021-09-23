@@ -50,7 +50,6 @@ static double calculateAngle(const geometry_msgs::Point &point1,
 static double distancePointToLine(const geometry_msgs::Point& point,
     struct Line& line) {
 
-    std::cout << "Point: (" << point.x << ", " << point.y << ")" << std::endl;
     double numerator = abs(line.a * point.x + line.b * point.y + line.c);
     double denominator = sqrt(pow(line.a, 2) + pow(line.b, 2));
 
@@ -205,23 +204,26 @@ bool Robot::obstacleInWay() {
     // This is found by finding the laser number that will have the angle
     // difference from directly in front of the robot such that the equation
     // applies.
-    // cos(A) = H / R where A is the angle between zero degrees realtive to the
-    // robot's x axis, H is the max distance away an obstacle needs to be for
+    // tan(A) = O / R where A is the angle between zero degrees realtive to the
+    // robot's x axis, O is the max distance away an obstacle needs to be for
     // it to be detected, and R is half of the robot's width.
     // To solve for A, I applied A = PI/2 - (i * a). Where i is the effective
     // index value from the center and a is the angle between laser values.
     float pointsToCheck = laserScan.angle_increment *
-        (M_PI/2.0 - acos(OBSTACLE_DISTANCE / ROBOT_WIDTH / 2));
+        (M_PI/2.0 - atan(OBSTACLE_DISTANCE / ROBOT_WIDTH / 2));
 
     int numPointsToCheck = ceil(pointsToCheck);
+    int maxPoints = NUM_LASER_POINTS;
+    numPointsToCheck = std::min(numPointsToCheck, maxPoints);
 
     for(int i = 0; i < numPointsToCheck; i++) {
         // Check to the left and right side, if either of them detect an
         // obstancle, assume there is an obstacle.
         // NOTE: This is problematic when dealinging with noisy sensors!
-        if(laserScan.ranges[rightIndex + i] < OBSTACLE_DISTANCE)
+        float theta = 90 - (i * laserScan.angle_increment);
+        if(laserScan.ranges[rightIndex + i] * sin(theta) < OBSTACLE_DISTANCE)
             return true;
-        if(laserScan.ranges[leftIndex + i] < OBSTACLE_DISTANCE)
+        if(laserScan.ranges[leftIndex + i] * sin(theta) < OBSTACLE_DISTANCE)
             return true;
     }
 
@@ -245,11 +247,6 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
         targetLine.c = (point.x - pose.position.x) * point.y +
             (pose.position.y - point.y) * point.x;
 
-        std::cout << "Point 1: (" << pose.position.x << ", " << pose.position.y << ")" << std::endl;
-        std::cout << "Point 2: (" << point.x << ", " << point.y << ")" << std::endl;
-
-        std::cout << "A, B, C: " << targetLine.a << " " << targetLine.b <<  " " << targetLine.c << std::endl;
-
         previousPoint = pose.position;
 
         stop();
@@ -268,16 +265,13 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
     }
 
     // Check if we have re-reached the direct line to the target
-    // TODO: Check if path to left is clear
-    std::cout << "Point to right " << pointToRight(pose, point) << std::endl;
-
     if(pointToRight(pose, point) && 
        distancePointToLine(pose.position, targetLine) <= DISTANCE_TOLERANCE) {
         
         motionState = RobotMotionState::FREE_MOTION;
     }
-    else {
     // Otherwise bug around target
+    else {
         geometry_msgs::Twist twist;
 
         // Turn until we are not obstructed
@@ -285,17 +279,14 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
             twist.angular.z = 0.1;
             twist.linear.x = 0;
             velocityPublisher->publish(twist);
-            std::cout << "IN WAY" << std::endl;
         }
         else {
             // Check distance to obstacle to adjust angular velocity
             if(sonarArray.ranges[1] > OBSTACLE_DISTANCE) {
                 twist.angular.z = -0.5;
-                std::cout << "TURNING TOWARDS" << std::endl;
             }
             else if(sonarArray.ranges[1] < OBSTACLE_DISTANCE - 0.5){
                 twist.angular.z = 0.5;
-                std::cout << "TURNING AWAY" << std::endl;
             }
             twist.linear.x = 0.2;
             velocityPublisher->publish(twist);
