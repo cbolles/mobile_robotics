@@ -266,7 +266,8 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
 
     // Check if we have re-reached the direct line to the target
     if(pointToRight(pose, point) && 
-       distancePointToLine(pose.position, targetLine) <= DISTANCE_TOLERANCE) {
+       distancePointToLine(pose.position, targetLine) <= DISTANCE_TOLERANCE &&
+       calculateDistance(pose.position, point) < calculateDistance(previousPoint, point)) {
         
         motionState = RobotMotionState::FREE_MOTION;
     }
@@ -276,7 +277,7 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
 
         // Turn until we are not obstructed
         if(obstacleInWay()) {
-            twist.angular.z = 0.1;
+            twist.angular.z = 0.5;
             twist.linear.x = 0;
             velocityPublisher->publish(twist);
         }

@@ -244,9 +244,9 @@ private:
     static constexpr double SLOW_DOWN_DISTANCE = 1;
 
     /** The width of the robot in meters */
-    static constexpr double ROBOT_WIDTH = 1;
+    static constexpr double ROBOT_WIDTH = 0.5;
     /** The length of the robot in meters */
-    static constexpr double ROBOT_LENGTH = 1;
+    static constexpr double ROBOT_LENGTH = 0.5;
 
     /** Distance away from the robot where objects become potential obstacles */
     static constexpr double OBSTACLE_DISTANCE = 1;
