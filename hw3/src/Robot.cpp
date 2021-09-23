@@ -50,8 +50,9 @@ static double calculateAngle(const geometry_msgs::Point &point1,
 static double distancePointToLine(const geometry_msgs::Point& point,
     struct Line& line) {
 
-    double numerator = abs(-1 * line.slope * point.x + point.y - line.intercept);
-    double denominator = sqrt(pow(-1 * line.slope, 2) + 1);
+    std::cout << "Point: (" << point.x << ", " << point.y << ")" << std::endl;
+    double numerator = abs(line.a * point.x + line.b * point.y + line.c);
+    double denominator = sqrt(pow(line.a, 2) + pow(line.b, 2));
 
     return numerator / denominator;
 }
@@ -64,7 +65,7 @@ static double distancePointToLine(const geometry_msgs::Point& point,
  * @param point The point in question
  * @return True if the point is to the left of the robot
  */
-static bool pointToLeft(const geometry_msgs::Pose& pose, const geometry_msgs::Point& point) {
+static bool pointToRight(const geometry_msgs::Pose& pose, const geometry_msgs::Point& point) {
     double angleBetween = calculateAngle(pose.position, point);
     double currentHeading = 2 * atan2(pose.orientation.z, pose.orientation.w);
 
@@ -77,9 +78,9 @@ static bool pointToLeft(const geometry_msgs::Pose& pose, const geometry_msgs::Po
     }
 
     if(angleDiff < 0)
-        return true;
-    else
         return false;
+    else
+        return abs(angleDiff) >= 1.309;
 }
 
 
@@ -239,9 +240,15 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
         motionState = RobotMotionState::BUG;
 
         // Determine line from current point to target
-        targetLine.slope = static_cast<float>(point.x - pose.position.x) /
-            (point.y - pose.position.y);
-        targetLine.intercept = point.y - targetLine.slope * point.x;
+        targetLine.a = point.y - pose.position.y;
+        targetLine.b = pose.position.x - point.x;
+        targetLine.c = (point.x - pose.position.x) * point.y +
+            (pose.position.y - point.y) * point.x;
+
+        std::cout << "Point 1: (" << pose.position.x << ", " << pose.position.y << ")" << std::endl;
+        std::cout << "Point 2: (" << point.x << ", " << point.y << ")" << std::endl;
+
+        std::cout << "A, B, C: " << targetLine.a << " " << targetLine.b <<  " " << targetLine.c << std::endl;
 
         previousPoint = pose.position;
 
@@ -262,12 +269,10 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
 
     // Check if we have re-reached the direct line to the target
     // TODO: Check if path to left is clear
-    std::cout << "DISTANCE: " << distancePointToLine(point, targetLine) << std::endl;
+    std::cout << "Point to left " << pointToRight(pose, point) << std::endl;
 
-    if(pointToLeft(pose, point) && 
-       sonarArray.ranges[5] > OBSTACLE_DISTANCE &&
-       distancePointToLine(point, targetLine) <= DISTANCE_TOLERANCE &&
-       calculateDistance(pose.position, previousPoint) > 1) {
+    if(pointToRight(pose, point) && 
+       distancePointToLine(pose.position, targetLine) <= DISTANCE_TOLERANCE) {
         
         // First turn towards the goal
         if(!isPointingAt(point)) {

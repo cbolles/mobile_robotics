@@ -6,11 +6,14 @@
 
 /**
  * Represents a line, used for detemining direction to target after the
- * robot started to bug
+ * robot started to bug.
+ * 
+ * Representation of the general form of a line
  */
 struct Line {
-    float slope;
-    float intercept;
+    float a;
+    float b;
+    float c;
 };
 
 /**
