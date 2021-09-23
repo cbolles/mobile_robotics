@@ -269,19 +269,12 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
 
     // Check if we have re-reached the direct line to the target
     // TODO: Check if path to left is clear
-    std::cout << "Point to left " << pointToRight(pose, point) << std::endl;
+    std::cout << "Point to right " << pointToRight(pose, point) << std::endl;
 
     if(pointToRight(pose, point) && 
        distancePointToLine(pose.position, targetLine) <= DISTANCE_TOLERANCE) {
         
-        // First turn towards the goal
-        if(!isPointingAt(point)) {
-            turnTowardsPoint(point);
-        }
-        // Then we are ready to try to move back towards point
-        else {
-            motionState = RobotMotionState::FREE_MOTION;
-        }
+        motionState = RobotMotionState::FREE_MOTION;
     }
     else {
     // Otherwise bug around target
