@@ -239,7 +239,7 @@ private:
     /** The minimum linear speed of the robot in meters/s */
     static constexpr double MIN_SPEED = 0.1;
     /** Maximum linear speed of the robot in meters/s */
-    static constexpr double MAX_SPEED = 0.5;
+    static constexpr double MAX_SPEED = 0.3;
     /** The distance from a point to start slowing down */
     static constexpr double SLOW_DOWN_DISTANCE = 1;
 
@@ -249,7 +249,7 @@ private:
     static constexpr double ROBOT_LENGTH = 0.5;
 
     /** Distance away from the robot where objects become potential obstacles */
-    static constexpr double OBSTACLE_DISTANCE = 1;
+    static constexpr double OBSTACLE_DISTANCE = 0.5;
 
     /** Number of values in the laser scan */
     static constexpr int NUM_LASER_POINTS = 640;

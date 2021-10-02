@@ -278,20 +278,21 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
 
         // Turn until we are not obstructed
         if(obstacleInWay()) {
+	    std::cout << "IN WAY" << std::endl;
             twist.angular.z = 0.5;
             twist.linear.x = 0;
             velocityPublisher->publish(twist);
         }
         else {
             // Check distance to obstacle to adjust angular velocity
-            if(sonarArray.ranges[1] > OBSTACLE_DISTANCE) {
-                twist.angular.z = -0.5;
+            if(sonarArray.ranges[1] > 0.3) {
+                twist.angular.z = -0.2;
             }
             else if(sonarArray.ranges[1] < OBSTACLE_DISTANCE - 0.5){
-                twist.angular.z = 0.5;
+                twist.angular.z = 0.2;
             }
-            twist.linear.x = 0.2;
-            velocityPublisher->publish(twist);
+	    twist.linear.x = 0.1;
+	    velocityPublisher->publish(twist);
         }
     }
 
