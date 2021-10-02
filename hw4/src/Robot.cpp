@@ -239,6 +239,7 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
 
     // Check if the robot has meet an obstacle (to RobotMotionState::BUG)
     if(obstacleInWay()) {
+	std::cout << "IN WAY" << std::endl;
         motionState = RobotMotionState::BUG;
 
         // Determine line from current point to target

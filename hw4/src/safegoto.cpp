@@ -116,13 +116,13 @@ int main(int argc, char** argv) {
 
     // Setup publishers
     ros::Publisher motorEnablePublisher = n.advertise<p2os_msgs::MotorState>
-        ("/cmd_motor_state", 10);
+        ("/cmd_motor_state", 10, true);
     ros::Publisher velocityPublisher = n.advertise<geometry_msgs::Twist>
         ("/cmd_vel", 1000);
     
     // Subscribe to robot state
     ros::Subscriber sub = n.subscribe("/pose", 1000, odoCallback);
-    ros::Subscriber laserSub = n.subscribe("/kinect_laser/scan", 1000,
+    ros::Subscriber laserSub = n.subscribe("/scan", 1000,
         kinectCallback);
     ros::Subscriber sonarSub = n.subscribe("/sonar", 1000, sonarCallback);
 
