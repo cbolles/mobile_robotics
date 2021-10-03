@@ -82,9 +82,9 @@ class Robot:
             self.GOTO_X, self.GOTO_Y = self.GOAL_X, self.GOAL_Y
             return
 
-        distance = self.distanceAway(self.GOTO_X, self.GOAL_Y)
-
-        if self.sonarInfo[3] > 2 and self.sonarInfo[4] > 2:
+        distance = self.distanceAway(self.GOTO_X, self.GOTO_Y)
+        
+        if self.sonarInfo[3] > 0.6 and self.sonarInfo[4] > 0.6:
             return
         elif self.sonarInfo[3] > distance and self.sonarInfo[4] > distance:
             return
@@ -95,13 +95,15 @@ class Robot:
 
         if turnRight:
             # print("\n\n\nright\n\n\n")
-            angle_change = (3.14-(6.28 - self.THETA - 0.872665)) % 6.28
+            print("right")
+            angle_change = (6.28 - self.THETA - 0.872665)
         else:
+            print("left")
             # print("\n\n\nleft\n\n\n")
-            angle_change = (3.14-(6.28 - self.THETA + 0.872665)) % 6.28
+            angle_change = (6.28 - self.THETA + 0.872665)
 
-        self.GOTO_X = self.CURRENT_X + (0.5) * cos(angle_change)
-        self.GOTO_Y = self.CURRENT_Y + (0.5) * sin(angle_change)
+        self.GOTO_X = self.CURRENT_X - (1.5) * cos(angle_change)
+        self.GOTO_Y = self.CURRENT_Y - (1.5) * sin(angle_change)
 
 
 
@@ -114,9 +116,9 @@ class Robot:
             ms.angular.z = 0
             self.turning = False
             self.close()
-        elif abs((self.THETA % 6.28) - angle_away % 6.28) > 0.0872665:
+        elif abs((self.THETA % 6.28) - angle_away % 6.28) > 0.1:
             ms.linear.x = 0
-            ms.angular.z = 0.2 * (self.turn_left(angle_away))
+            ms.angular.z = 0.3 * (self.turn_left(angle_away))
             self.turning = True
         else:
             ms.linear.x = 0.2
