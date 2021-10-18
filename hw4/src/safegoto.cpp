@@ -130,7 +130,6 @@ int main(int argc, char** argv) {
     std::string sonarTopic = "/sonar";
 
     if(!isReal) {
-        std::cout << "HERE" << std::endl;
         velocityTopic = "/r1/cmd_vel";
         poseTopic = "/r1/odom";
         kinectTopic = "/r1/kinect_laser/scan";
@@ -142,6 +141,8 @@ int main(int argc, char** argv) {
         (motorEnableTopic, 10, true);
     ros::Publisher velocityPublisher = n.advertise<geometry_msgs::Twist>
         (velocityTopic, 1000);
+
+    std::cout << velocityTopic << std::endl;
     
 
     // Subscribe to topics
@@ -161,13 +162,11 @@ int main(int argc, char** argv) {
     // Setup loop
     ros::Rate loopRate(LOOP_RATE);
 
-    running = false;
-
-    // BEGIN TEST CODE
-    robot->turnRight(0.2);
-    // END TEST CODE
+    running = true;
 
     ros::spin();
+
+    std::cout << "Finished" << std::endl;
 
     return 0;
 }

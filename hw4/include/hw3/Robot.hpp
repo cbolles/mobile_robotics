@@ -35,6 +35,15 @@ struct Line {
 class Robot {
 public:
     /**
+     * Heading values that can be used for directions
+     */
+    enum class Heading {
+        FORWARD,
+        RIGHT,
+        LEFT
+    };
+
+    /**
      * Initiate the robot.
      * 
      * @param velocityPublisher The ROS topic publisher to control velocity
@@ -71,13 +80,16 @@ public:
     void setSonarArray(const p2os_msgs::SonarArray& sonarArray);
 
     /**
-     * Determine if the robot is currently pointing at the target within
-     * tolerane.
+     * Get the direction the point is to the robot. (Forward, Right, Left)
      * 
-     * @param point The point to check if the robot is point at
-     * @return True if the robot is pointing at that point within tolerance.
+     * For points that are in front of the robot, there is a tolerance that
+     * is applied so that points that are within some angular range of
+     * directly in front of the robot are considered in front of the robot.
+     * 
+     * @param point The point to check for
+     * @return The direction the point is from the robot
      */
-    bool isPointingAt(const geometry_msgs::Point& point);
+    Robot::Heading getPointDirection(const geometry_msgs::Point& point);
 
     /**
      * Determine if the robot is at a given point within tolerance. This will
@@ -110,19 +122,6 @@ public:
       * @param angularVelocity The velocity for the robot to turn left at
       */
      void turnLeft(float angularVelocity);
-
-    /**
-     * Adjust the robots velocity so that it is turning to the given point.
-     * This will have the robot turn in place and the robot will not have a
-     * forward velocity.
-     * 
-     * This will also include a "smart velocity" where the anglular velocity
-     * of the robot will be determined by how close the robot is to pointing
-     * at the target.
-     * 
-     * @param point The point to turn towards.
-     */
-    void turnTowardsPoint(const geometry_msgs::Point& point);
 
     /**
      * Adjust the robots velocity so that it is moving towards the given point.

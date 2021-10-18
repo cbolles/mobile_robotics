@@ -108,7 +108,7 @@ void Robot::setSonarArray(const p2os_msgs::SonarArray& sonarArray) {
     this->sonarArray = sonarArray;
 }
 
-bool Robot::isPointingAt(const geometry_msgs::Point& point) {
+Robot::Heading Robot::getPointDirection(const geometry_msgs::Point& point) {
     double angleBetween = calculateAngle(pose.position, point);
     double currentHeading = 2 * atan2(pose.orientation.z, pose.orientation.w);
 
@@ -120,7 +120,25 @@ bool Robot::isPointingAt(const geometry_msgs::Point& point) {
         angleDiff = angleDiff - 2 * M_PI;
     }
 
-    return abs(angleDiff) <= ANGLE_TOLERANCE;
+    // Point headings in the physical world
+    if(isReal) {
+        if(abs(angleDiff) < ANGLE_TOLERANCE)
+            return Heading::FORWARD;
+        else if(angleDiff > 0)
+            return Heading::RIGHT;
+        else
+            return Heading::LEFT       // TODO: Add real world direction checking
+    }
+    // Point headings in the virtual world
+    else {
+        if(abs(angleDiff) < ANGLE_TOLERANCE)
+            return Heading::FORWARD;
+        else if(angleDiff > 0)
+            return Heading::RIGHT;
+        else
+            return Heading::LEFT;
+    }
+    return Heading::FORWARD;
 }
 
 bool Robot::isAtPoint(const geometry_msgs::Point& point) {
@@ -129,8 +147,7 @@ bool Robot::isAtPoint(const geometry_msgs::Point& point) {
 
 void Robot::turnRight(float angularVelocity) {
     geometry_msgs::Twist twist;
-    twist.angular.z = 0.5;
-    std::cout << "THERE" << std::endl;
+    twist.angular.z = angularVelocity;
     velocityPublisher->publish(twist);
 }
 
@@ -143,33 +160,6 @@ void Robot::turnLeft(float angularVelocity) {
 
 double Robot::getDistance(const geometry_msgs::Point& point) {
     return calculateDistance(pose.position, point);
-}
-
-void Robot::turnTowardsPoint(const geometry_msgs::Point& point) {
-    geometry_msgs::Twist twist;
-
-    double angleBetween = calculateAngle(pose.position, point);
-    double currentHeading = 2 * atan2(pose.orientation.z, pose.orientation.w);
-
-    double angleDiff = fmod((angleBetween - currentHeading), (2 * M_PI));
-    if(angleDiff < 0 && abs(angleDiff) > (2 * M_PI + angleDiff)) {
-        angleDiff = 2 * M_PI + angleDiff;
-    }
-    else if(angleDiff > abs(angleDiff - 2 * M_PI)) {
-        angleDiff = angleDiff - 2 * M_PI;
-    }
-
-    double speed = MAX_ANGULAR_SPEED;
-    if(abs(angleDiff) <= SLOW_DOWN_ANGLE) {
-        double proportionalSpeed = abs(angleDiff) / SLOW_DOWN_ANGLE * MAX_ANGULAR_SPEED;
-        double min = MIN_ANGULAR_SPEED;
-        speed = std::max(proportionalSpeed, min);
-    }
-
-    if(angleDiff < 0)
-        turnLeft(speed);
-    else
-        turnRight(speed);
 }
 
 void Robot::moveTowardsPoint(const geometry_msgs::Point& point) {
@@ -195,14 +185,17 @@ void Robot::unsafeGoTo(const geometry_msgs::Point& point) {
     if(isAtPoint(point))
         return;
 
-    // Check if we need to angle towards the point
-    if(!isPointingAt(point)) {
-        turnTowardsPoint(point);
-        return;
+    switch(getPointDirection(point)) {
+        case Heading::FORWARD:
+            moveTowardsPoint(point);
+            break;
+        case Heading::RIGHT:
+            turnRight(0.2);
+            break;
+        case Heading::LEFT:
+            turnLeft(0.2);
+            break;
     }
-
-    // Move towards point
-    moveTowardsPoint(point);
 }
 
 bool Robot::obstacleInWay() {
