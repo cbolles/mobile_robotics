@@ -5,6 +5,7 @@
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Odometry.h"
 #include "sensor_msgs/LaserScan.h"
+#include <unistd.h>
 
 #include "hw3/utils.hpp"
 #include "hw3/Robot.hpp"
@@ -99,10 +100,17 @@ void sonarCallback(const p2os_msgs::SonarArray& sonarArray) {
 }
 
 int main(int argc, char** argv) {
+    bool isReal = true;
+
     // Get the file path of the points from the user
     if(argc < 2) {
         std::cout << "Require file of points to goto" << std::endl;
         return 1;
+    }
+    // Check for optional value to distinguish between real and Gazebo
+    if(argc == 3) {
+        std::cout << "Running in simulation" << std::endl;
+        isReal = false;
     }
 
     std::string filePath = argv[1];
@@ -114,20 +122,36 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "safegoto");
     ros::NodeHandle n;
 
+    // Determine which topic to subscribe to
+    std::string motorEnableTopic = "/cmd_motor_state";
+    std::string velocityTopic = "/cmd_vel";
+    std::string poseTopic = "/pose";
+    std::string kinectTopic = "/scan";
+    std::string sonarTopic = "/sonar";
+
+    if(!isReal) {
+        std::cout << "HERE" << std::endl;
+        velocityTopic = "/r1/cmd_vel";
+        poseTopic = "/r1/odom";
+        kinectTopic = "/r1/kinect_laser/scan";
+        sonarTopic = "/r1/sonar";
+    }
+
     // Setup publishers
     ros::Publisher motorEnablePublisher = n.advertise<p2os_msgs::MotorState>
-        ("/cmd_motor_state", 10, true);
+        (motorEnableTopic, 10, true);
     ros::Publisher velocityPublisher = n.advertise<geometry_msgs::Twist>
-        ("/cmd_vel", 1000);
+        (velocityTopic, 1000);
     
-    // Subscribe to robot state
-    ros::Subscriber sub = n.subscribe("/pose", 1000, odoCallback);
-    ros::Subscriber laserSub = n.subscribe("/scan", 1000,
+
+    // Subscribe to topics
+    ros::Subscriber sub = n.subscribe(poseTopic, 1000, odoCallback);
+    ros::Subscriber laserSub = n.subscribe(kinectTopic, 1000,
         kinectCallback);
-    ros::Subscriber sonarSub = n.subscribe("/sonar", 1000, sonarCallback);
+    ros::Subscriber sonarSub = n.subscribe(sonarTopic, 1000, sonarCallback);
 
     // Setup robot
-    robot = new Robot(velocityPublisher);
+    robot = new Robot(velocityPublisher, isReal);
 
     // Enable motors
     p2os_msgs::MotorState state;
@@ -137,12 +161,13 @@ int main(int argc, char** argv) {
     // Setup loop
     ros::Rate loopRate(LOOP_RATE);
 
-    running = true;
+    running = false;
+
+    // BEGIN TEST CODE
+    robot->turnRight(0.2);
+    // END TEST CODE
 
     ros::spin();
-
-    robot->stop();
-    std::cout << "Finished" << std::endl;
 
     return 0;
 }

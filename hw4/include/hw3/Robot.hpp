@@ -38,8 +38,9 @@ public:
      * Initiate the robot.
      * 
      * @param velocityPublisher The ROS topic publisher to control velocity
+     * @param isReal Represents if the robot is in simulation or real
      */
-    Robot(ros::Publisher& velocityPublisher);
+    Robot(ros::Publisher& velocityPublisher, bool isReal);
 
     /**
      * Get the current pose of the robot that is stored.
@@ -70,8 +71,6 @@ public:
     void setSonarArray(const p2os_msgs::SonarArray& sonarArray);
 
     /**
-
-    /**
      * Determine if the robot is currently pointing at the target within
      * tolerane.
      * 
@@ -97,6 +96,20 @@ public:
      * @return The distance in meters.
      */
     double getDistance(const geometry_msgs::Point& point);
+
+    /**
+     * Have the robot turn right at some angular velocity
+     *
+     * @param angularVelocity The velocity for the robot to turn right at
+     */
+    void turnRight(float angularVelocity);
+
+     /**
+      * Have the robot turn left at some angular velocity
+      *
+      * @param angularVelocity The velocity for the robot to turn left at
+      */
+     void turnLeft(float angularVelocity);
 
     /**
      * Adjust the robots velocity so that it is turning to the given point.
@@ -207,6 +220,8 @@ private:
     struct Line targetLine;
     /** Helper for previous points */
     geometry_msgs::Point previousPoint;
+    /** Represents if the robot is in simulation */
+    bool isReal;
 
     /**
      * Logic for free, un-obstructed motion, will also check for the need

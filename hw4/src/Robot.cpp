@@ -86,8 +86,9 @@ static bool pointToRight(const geometry_msgs::Pose& pose, const geometry_msgs::P
 /*******************************************************************************
  * Robot class implementation
  ******************************************************************************/
-Robot::Robot(ros::Publisher& velocityPublisher) {
+Robot::Robot(ros::Publisher& velocityPublisher, bool isReal) {
     this->velocityPublisher = &velocityPublisher;
+    this->isReal = isReal;
     motionState = RobotMotionState::FREE_MOTION;
 }
 
@@ -126,6 +127,20 @@ bool Robot::isAtPoint(const geometry_msgs::Point& point) {
     return calculateDistance(pose.position, point) <= DISTANCE_TOLERANCE;
 }
 
+void Robot::turnRight(float angularVelocity) {
+    geometry_msgs::Twist twist;
+    twist.angular.z = 0.5;
+    std::cout << "THERE" << std::endl;
+    velocityPublisher->publish(twist);
+}
+
+void Robot::turnLeft(float angularVelocity) {
+    geometry_msgs::Twist twist;
+    twist.angular.z = -angularVelocity;
+    velocityPublisher->publish(twist);
+}
+
+
 double Robot::getDistance(const geometry_msgs::Point& point) {
     return calculateDistance(pose.position, point);
 }
@@ -152,11 +167,9 @@ void Robot::turnTowardsPoint(const geometry_msgs::Point& point) {
     }
 
     if(angleDiff < 0)
-        twist.angular.z = -speed;
+        turnLeft(speed);
     else
-        twist.angular.z = speed;
-
-    velocityPublisher->publish(twist);
+        turnRight(speed);
 }
 
 void Robot::moveTowardsPoint(const geometry_msgs::Point& point) {
