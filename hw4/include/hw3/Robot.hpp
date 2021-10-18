@@ -116,12 +116,27 @@ public:
      */
     void turnRight(float angularVelocity);
 
-     /**
-      * Have the robot turn left at some angular velocity
-      *
-      * @param angularVelocity The velocity for the robot to turn left at
-      */
-     void turnLeft(float angularVelocity);
+    /**
+     * Have the robot turn left at some angular velocity
+     *
+     * @param angularVelocity The velocity for the robot to turn left at
+     */
+    void turnLeft(float angularVelocity);
+
+    /**
+     * Have the robot move forward at a given velocity
+     * 
+     * @param velocity The velocity for the robot to move toward at
+     */
+    void forward(float velocity);
+
+    /**
+     * Check to see if there is an obstacle to the immediate right of the 
+     * robot
+     * 
+     * @return True if the immediate right of the robot is clear
+     */
+    bool rightClear();
 
     /**
      * Adjust the robots velocity so that it is moving towards the given point.
@@ -221,6 +236,8 @@ private:
     geometry_msgs::Point previousPoint;
     /** Represents if the robot is in simulation */
     bool isReal;
+    /** Direction the robot will bug around objects */
+    Heading bugDirection;
 
     /**
      * Logic for free, un-obstructed motion, will also check for the need
@@ -241,7 +258,7 @@ private:
     /** The tolerance for what is considering point at (5 degrees) */
     static constexpr double ANGLE_TOLERANCE = 0.0872665;
     /** Tolerance for how close the robot needs to be to a point in meters */
-    static constexpr double DISTANCE_TOLERANCE = 0.05;
+    static constexpr double DISTANCE_TOLERANCE = 0.5;
     
     /** The minimum angular speed of the robot in radians/s */
     static constexpr double MIN_ANGULAR_SPEED = 0.05;

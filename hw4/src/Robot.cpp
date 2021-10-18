@@ -127,7 +127,7 @@ Robot::Heading Robot::getPointDirection(const geometry_msgs::Point& point) {
         else if(angleDiff > 0)
             return Heading::RIGHT;
         else
-            return Heading::LEFT       // TODO: Add real world direction checking
+            return Heading::LEFT;       // TODO: Add real world direction checking
     }
     // Point headings in the virtual world
     else {
@@ -157,6 +157,15 @@ void Robot::turnLeft(float angularVelocity) {
     velocityPublisher->publish(twist);
 }
 
+void Robot::forward(float velocity) {
+    geometry_msgs::Twist twist;
+    twist.linear.x = velocity;
+    velocityPublisher->publish(twist);
+}
+
+bool Robot::rightClear() {
+    return sonarArray.ranges[7] > OBSTACLE_DISTANCE;
+}
 
 double Robot::getDistance(const geometry_msgs::Point& point) {
     return calculateDistance(pose.position, point);
@@ -206,28 +215,12 @@ bool Robot::obstacleInWay() {
     int rightIndex = NUM_LASER_POINTS / 2;
     int leftIndex = NUM_LASER_POINTS / 2 - 1;
 
-    // Find the number of points that need to be checked in front of the robot.
-    // This is found by finding the laser number that will have the angle
-    // difference from directly in front of the robot such that the equation
-    // applies.
-    // tan(A) = O / R where A is the angle between zero degrees realtive to the
-    // robot's x axis, O is the max distance away an obstacle needs to be for
-    // it to be detected, and R is half of the robot's width.
-    // To solve for A, I applied A = PI/2 - (i * a). Where i is the effective
-    // index value from the center and a is the angle between laser values.
-    float pointsToCheck = laserScan.angle_increment *
-        (M_PI/2.0 - atan(OBSTACLE_DISTANCE / ROBOT_WIDTH / 2));
-
-    int numPointsToCheck = ceil(pointsToCheck);
-    int maxPoints = NUM_LASER_POINTS;
-    numPointsToCheck = std::min(numPointsToCheck, maxPoints);
-
-    for(int i = 0; i < numPointsToCheck; i++) {
+    for(int i = 0; i < NUM_LASER_POINTS / 2; i++) {
         // Check to the left and right side, if either of them detect an
         // obstancle, assume there is an obstacle.
         // NOTE: This is problematic when dealinging with noisy sensors!
         float theta = 90 - (i * laserScan.angle_increment);
-        if(laserScan.ranges[rightIndex + i] * sin(theta) < OBSTACLE_DISTANCE)
+        if(laserScan.ranges[rightIndex - i] * sin(theta) < OBSTACLE_DISTANCE)
             return true;
         if(laserScan.ranges[leftIndex + i] * sin(theta) < OBSTACLE_DISTANCE)
             return true;
@@ -245,8 +238,14 @@ void Robot::freeMotionLogic(const geometry_msgs::Point& point) {
 
     // Check if the robot has meet an obstacle (to RobotMotionState::BUG)
     if(obstacleInWay()) {
-	std::cout << "IN WAY" << std::endl;
+	    std::cout << "IN WAY" << std::endl;
         motionState = RobotMotionState::BUG;
+
+        if(rightClear()) {
+            bugDirection = Heading::RIGHT;
+        } else {
+            bugDirection = Heading::LEFT;
+        }
 
         // Determine line from current point to target
         targetLine.a = point.y - pose.position.y;
@@ -271,37 +270,23 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
         return;
     }
 
-    // Check if we have re-reached the direct line to the target
-    if(pointToRight(pose, point) && 
-       distancePointToLine(pose.position, targetLine) <= DISTANCE_TOLERANCE &&
-       calculateDistance(pose.position, point) < calculateDistance(previousPoint, point)) {
-        
-        motionState = RobotMotionState::FREE_MOTION;
-    }
-    // Otherwise bug around target
+    // Check if we have to turn to the left or right to avoid the obstacle
+    if (obstacleInWay()) {
+        if(bugDirection == Heading::RIGHT) {
+            turnRight(0.2);
+        } else {
+            turnLeft(0.2);
+        }
     else {
-        geometry_msgs::Twist twist;
-
-        // Turn until we are not obstructed
-        if(obstacleInWay()) {
-	    std::cout << "IN WAY" << std::endl;
-            twist.angular.z = 0.5;
-            twist.linear.x = 0;
-            velocityPublisher->publish(twist);
-        }
-        else {
-            // Check distance to obstacle to adjust angular velocity
-            if(sonarArray.ranges[1] > 0.3) {
-                twist.angular.z = -0.2;
-            }
-            else if(sonarArray.ranges[1] < OBSTACLE_DISTANCE - 0.5){
-                twist.angular.z = 0.2;
-            }
-	    twist.linear.x = 0.1;
-	    velocityPublisher->publish(twist);
+        // Check if we have to angle back towards the obstacle
+        if(bugDirection == Heading::RIGHT && sonarArray.ranges[1] > 0.3) {
+            turnLeft(0.2);
+        } else if(bugDirection == Heading::LEFT && sonarArray.ranges[6] > 0.3) {
+            turnRight(0.2);
+        } else {
+            forward(0.2);
         }
     }
-
 }
 
 void Robot::safeGoTo(const geometry_msgs::Point& point) {
