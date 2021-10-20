@@ -277,7 +277,14 @@ void Robot::bugMotionLogic(const geometry_msgs::Point& point) {
         } else {
             turnLeft(0.2);
         }
+    }
     else {
+        // Check if we can start moving back towards goal
+        if(getPointDirection(point) == Heading::FORWARD) {
+            motionState = RobotMotionState::FREE_MOTION;
+            return;
+        }
+
         // Check if we have to angle back towards the obstacle
         if(bugDirection == Heading::RIGHT && sonarArray.ranges[1] > 0.3) {
             turnLeft(0.2);
