@@ -62,6 +62,8 @@ class Mapper(tk.Frame):
         self.pose = None
         self.laser = None
         self.sonar = None
+
+        self.heading = 0
         # Used to stop updating the input while the mapping is taking place
         self.lock_input = False
 
@@ -75,11 +77,6 @@ class Mapper(tk.Frame):
         """
         if self.pose is None or self.laser is None:
             return
-
-        heading = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
-        if heading < 0:
-            heading += 2 * math.pi
-
          
         for index, range_val in enumerate(self.laser.ranges):
             # Check to make sure it is a valid input
@@ -88,19 +85,53 @@ class Mapper(tk.Frame):
             
             # Get the angle of the laser relative to the world
             angle_from_forward = self.laser.angle_min + index * self.laser.angle_increment
-            full_angle = heading - angle_from_forward
+            full_angle = self.heading - angle_from_forward
             full_angle = full_angle % (2 * math.pi)
 
-            x = int((self.pose.position.x + range_val * math.cos(full_angle)) / MAPSCALE + MAPSIZE / 2) 
-            y = int((self.pose.position.y + range_val * math.sin(full_angle)) / MAPSCALE + MAPSIZE / 2)
+            # Calculate the x and y position in the world coordinate system
+            x = self.pose.position.x + range_val * math.cos(full_angle)
+            y = self.pose.position.y + range_val * math.sin(full_angle)
 
+            # Scale the positions and translate the positions such that the origin is in the center of the map
+            x = int(x / MAPSCALE + MAPSIZE / 2)
+            y = int(y / MAPSCALE + MAPSIZE / 2)
+
+            # Bounds checking
             if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
-                return
+                continue
 
             self.oddsvals[x][y] = 1
             self.mappix[x, y] = 256
+    
+    def sonar_update_map(self):
+        if self.pose is None or self.sonar is None:
+            return
 
-        
+        # Loop over all the sonar ranges
+        for range_val, angle in zip(self.sonar, [90, 50, 30, 10, -10, -30, -50, -90]):
+            # Naive approach, TODO: Treat sonar output as cone
+            
+            # Check to make sure the input is valid
+            if math.isnan(range_val) or range_val == math.inf:
+                continue
+            
+            full_angle = self.heading - math.radians(angle)
+
+            # Calculate the x and y position in the world coordinate system
+            x = self.pose.position.x + range_val * math.cos(full_angle)
+            y = self.pose.position.y + range_val * math.sin(full_angle)
+
+            # Scale the positions and translate the positions such that the origin is in the center of the map
+            x = int(x / MAPSCALE + MAPSIZE / 2)
+            y = int(y / MAPSCALE + MAPSIZE / 2)
+
+
+            # Bounds checking
+            if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                continue
+
+            self.oddsvals[x][y] = 1
+            self.mappix[x, y] = 256 
 
     def update_map(self):
         """
@@ -118,8 +149,11 @@ class Mapper(tk.Frame):
 
         if self.sensor_source == SensorSource.ALL:
             self.laser_update_map()
+            self.sonar_update_map()
         elif self.sensor_source == SensorSource.LASER:
             self.laser_update_map()
+        elif self.sensor_source == SensorSource.SONAR:
+            self.sonar_update_map()
         
         # this puts the image update on the GUI thread, not ROS thread!
         # also note only one image update per scan, not per map-cell update
@@ -134,6 +168,10 @@ class Mapper(tk.Frame):
     def odo_update(self, odo_msg):
         if not self.lock_input:
             self.pose = odo_msg.pose.pose
+            self.heading = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
+            if self.heading < 0:
+                self.heading += 2 * math.pi
+
     
     def sonar_update(self, sonar_msg):
         if not self.lock_input:
