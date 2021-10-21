@@ -80,8 +80,8 @@ class Mapper(tk.Frame):
 
             full_angle = full_angle % (2 * math.pi)
 
-            x = int(self.pose.position.x + range_val * math.cos(full_angle) / MAPSCALE + MAPSIZE / 2) 
-            y = int(self.pose.position.y + range_val * math.sin(full_angle) / MAPSCALE + MAPSIZE / 2)
+            x = int((self.pose.position.x + range_val * math.cos(full_angle)) / MAPSCALE + MAPSIZE / 2) 
+            y = int((self.pose.position.y + range_val * math.sin(full_angle)) / MAPSCALE + MAPSIZE / 2)
 
             if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
                 return
