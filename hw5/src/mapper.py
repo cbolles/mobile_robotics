@@ -48,6 +48,7 @@ class Mapper(tk.Frame):
         self.pack()
 
         self.pose = None
+        self.pose_lock = False
 
     def update_image(self):
         self.mapimage = ImageTk.PhotoImage(self.themap)       
@@ -57,27 +58,39 @@ class Mapper(tk.Frame):
         return (int(odd * 256),)
     
     def odo_update(self, odo_msg):
-        self.pose = odo_msg.pose.pose
+        if not self.pose_lock:
+            self.pose = odo_msg.pose.pose
 
     def laser_update(self, lmsg):
         if self.pose is None:
             return
+        
+        self.pose_lock = True
+        heading = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
+        if heading < 0:
+            heading += 2 * math.pi
+        print(math.degrees(heading))
+        
         for index, range_val in enumerate(lmsg.ranges):
             if math.isnan(range_val) or range_val == math.inf:
                 continue
             
             angle_from_forward = lmsg.angle_min + index * lmsg.angle_increment
 
-            full_angle = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
-            full_angle += angle_from_forward
+            full_angle = heading + angle_from_forward
 
-            x = int(range_val * math.cos(full_angle) / MAPSCALE + MAPSIZE / 2) 
-            y = int(range_val * math.sin(full_angle) / MAPSCALE + MAPSIZE / 2)
+            full_angle = full_angle % (2 * math.pi)
 
-            print('({}, {}: range {})'.format(x, y, range_val))
+            x = int(self.pose.position.x + range_val * math.cos(full_angle) / MAPSCALE + MAPSIZE / 2) 
+            y = int(self.pose.position.y + range_val * math.sin(full_angle) / MAPSCALE + MAPSIZE / 2)
+
+            if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                return
 
             self.oddsvals[x][y] = 1
             self.mappix[x, y] = 256
+
+        self.pose_lock = False
             
         # this puts the image update on the GUI thread, not ROS thread!
         # also note only one image update per scan, not per map-cell update
