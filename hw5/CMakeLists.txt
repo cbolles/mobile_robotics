@@ -15,7 +15,6 @@ include_directories(
   include/
 )
 
-add_executable(hw5 src/mapper.cpp src/maputils.cpp)
-target_link_libraries(hw5 ${catkin_LIBRARIES} GL GLU glut)
-
-
+catkin_install_python(PROGRAMS src/mapper.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
