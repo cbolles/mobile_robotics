@@ -13,6 +13,11 @@
 #include "sensor_msgs/LaserScan.h"
 #include "hw5/maputils.hpp"
 
+#include <unistd.h>
+
+#include <iostream>
+#include <vector>
+
 #define WIN_X 100
 #define WIN_Y 100
 #define WIN_SCALE 1
@@ -20,8 +25,7 @@
 // The map itself
 static nav_msgs::OccupancyGrid map;
 
-// the last dimension here is to allow for RGB, though my code is
-// only making grays...
+// Visual representation of map
 static float drawMap[WIN_X][WIN_Y][3];
 
 // don't try to draw before the window exists...
@@ -37,7 +41,7 @@ static void display() {
   mapMutex.lock();
 
   // you can use other formats for the data, google glDrawPixels for details
-  glDrawPixels(WIN_X,WIN_Y,GL_RGB,GL_FLOAT, drawMap);
+  glDrawPixels(WIN_X,WIN_Y, GL_RGB, GL_FLOAT, drawMap);
   
   glFlush();
 
@@ -59,9 +63,6 @@ void odoCallback(const nav_msgs::Odometry::ConstPtr& odoMsg) {
 
     mapMutex.lock();
 
-    // here is where you update your map (and pixels if separate)
-    // I am just making a slightly lighter square around the robot's
-    // position, to make sure things are working. 
     for (int r = ypix-10; r < ypix+10; r++) {
         for (int c = xpix-10; c < xpix+10; c++) {      
             if (getMapValue(map, r, c) > 10) {
@@ -81,25 +82,35 @@ void odoCallback(const nav_msgs::Odometry::ConstPtr& odoMsg) {
     if (winReady) glutPostRedisplay();
 }
 
-// Of course you will need sensor callbacks too.  You could of course
-// do the map update there as well, but either way, be careful that
-// your callback doesn't take longer than the amount of time between
-// calls, or things will buffer up and get out of sync.  A completely
-// separate map building function, outside of either callback, may be
-// the best idea, but again make sure that your data is consistent - if
-// your callback takes too long, you will need to throw out some data
-// somewhere to keep up.
-
 int main(int argc, char *argv[]) {
+    bool isReal = true;
 
-    ros::init(argc,argv,"mapper");
+    // Check for optional value to distinguish between real and Gazebo
+    if(argc == 2) {
+        std::cout << "Running in simulation" << std::endl;
+        isReal = false;
+    }
+
+    // Determine which topic to subscribe to
+    std::string poseTopic = "/pose";
+    std::string kinectTopic = "/scan";
+    std::string sonarTopic = "/sonar";
+
+    if(!isReal) {
+        poseTopic = "/r1/odom";
+        kinectTopic = "/r1/kinect_laser/scan";
+        sonarTopic = "/r1/sonar";
+    }
+
+    ros::init(argc, argv, "mapper");
     ros::NodeHandle n;
 
-    ros::Subscriber odosub = n.subscribe("/r1/odom",1000,odoCallback);
-    // and sensor callbacks
+    ros::Subscriber odosub = n.subscribe(poseTopic, 1, odoCallback);
+    ros::Subscriber laserSub = n.subscribe(kinectTopic, 1,
+        kinectCallback);
+    ros::Subscriber sonarSub = n.subscribe(sonarTopic, 1, sonarCallback);
 
-    // OpenGL expects to occupy the main thread, so you can't spin() here.
-    // this object creates a separate thread that spins on its own, forever.
+    // Start ROS spinner
     ros::AsyncSpinner spinner(1);
     spinner.start();
 
@@ -114,7 +125,7 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    
+    // Setup GUI
     glutInit( &argc, argv );
     glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE );
     glutInitWindowPosition( 50, 50 );
