@@ -14,10 +14,14 @@ from PIL import Image, ImageTk
 import random
 import rospy
 from sensor_msgs.msg import LaserScan
+from nav_msgs.msg import Odometry
+import math
 
 # a reasonable size? depends on the scale of the map and the
 # size of the environment, of course:
-MAPSIZE = 500
+MAPSIZE = 100
+
+MAPSCALE = 0.1
 
 class Mapper(tk.Frame):    
 
@@ -43,31 +47,38 @@ class Mapper(tk.Frame):
         self.canvas.pack()
         self.pack()
 
+        self.pose = None
+
     def update_image(self):
         self.mapimage = ImageTk.PhotoImage(self.themap)       
         self.canvas.create_image(MAPSIZE/2, MAPSIZE/2, image = self.mapimage)
 
     def odds_to_pixel_value(self, odd):
         return (int(odd * 256),)
+    
+    def odo_update(self, odo_msg):
+        self.pose = odo_msg.pose.pose
 
-    # here I am putting the map update in the laser callback
-    # of course you will need a sonar callback and odometry as well
-    # actually, a completely separate function on a timer might be
-    # a good idea, either way be careful if it takes longer to run
-    # than the time between calls...
-    def laser_update(self,lmsg):
-        # note this function just lowers the odds in a random area... 
-        sx = random.randint(100,500)
-        sy = random.randint(100,500)
-        rospy.loginfo('stomping on %d, %d',sx,sy)
+    def laser_update(self, lmsg):
+        if self.pose is None:
+            return
+        for index, range_val in enumerate(lmsg.ranges):
+            if math.isnan(range_val) or range_val == math.inf:
+                continue
+            
+            angle_from_forward = lmsg.angle_min + index * lmsg.angle_increment
 
-        for x in range(sx-60,sx+60):
-            for y in range(sy-60,sy+60):
-                self.oddsvals[x][y] *= 0.9
-                # you need to write a function that converts odds into
-                # some appropriate grey-scale value
-                self.mappix[x, y] = self.odds_to_pixel_value(self.oddsvals[x][y])
+            full_angle = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
+            full_angle += angle_from_forward
 
+            x = int(range_val * math.cos(full_angle) / MAPSCALE + MAPSIZE / 2) 
+            y = int(range_val * math.sin(full_angle) / MAPSCALE + MAPSIZE / 2)
+
+            print('({}, {}: range {})'.format(x, y, range_val))
+
+            self.oddsvals[x][y] = 1
+            self.mappix[x, y] = 256
+            
         # this puts the image update on the GUI thread, not ROS thread!
         # also note only one image update per scan, not per map-cell update
         self.after(0,self.update_image)    
@@ -77,7 +88,8 @@ def main():
 
     root = tk.Tk()
     m = Mapper(master=root,height=MAPSIZE,width=MAPSIZE)
-    rospy.Subscriber("/r1/kinect_laser/scan",LaserScan,m.laser_update)
+    rospy.Subscriber("/r1/kinect_laser/scan", LaserScan, m.laser_update)
+    rospy.Subscriber("/r1/odom", Odometry, m.odo_update)
     
     # the GUI gets the main thread, so all your work must be in callbacks.
     root.mainloop()
