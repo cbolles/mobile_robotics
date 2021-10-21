@@ -69,7 +69,6 @@ class Mapper(tk.Frame):
         heading = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
         if heading < 0:
             heading += 2 * math.pi
-        print(math.degrees(heading))
         
         for index, range_val in enumerate(lmsg.ranges):
             if math.isnan(range_val) or range_val == math.inf:
@@ -77,7 +76,7 @@ class Mapper(tk.Frame):
             
             angle_from_forward = lmsg.angle_min + index * lmsg.angle_increment
 
-            full_angle = heading + angle_from_forward
+            full_angle = heading - angle_from_forward
 
             full_angle = full_angle % (2 * math.pi)
 
