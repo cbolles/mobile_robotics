@@ -70,6 +70,66 @@ class Mapper(tk.Frame):
     def update_image(self):
         self.mapimage = ImageTk.PhotoImage(self.themap)       
         self.canvas.create_image(MAPSIZE/2, MAPSIZE/2, image = self.mapimage)
+    
+    def bresenham_open_update(self, x0, y0, x1, y1):
+        """
+        Update the area along the line as determined by the provided
+        coordinates as detected as free space.
+
+        :param x0: The starting x position
+        :param y0: The starting y position
+        :param x1: The end x position
+        :param y1: The end y position
+        """
+        def line_low(x0, y0, x1, y1):
+            dx = x1 - x0
+            dy = y1 - y0
+            yi = 1
+            if dy < 0:
+                yi = -1
+                dy = -dy
+            d = 2 * dy - dx
+            y = y0
+
+            for x in range(x0, x1 + 1):
+                self.oddsvals[x][y] = 1
+                self.mappix[x, y] = 256
+
+                if d > 0:
+                    y += yi
+                    d += 2 * (dy - dx)
+                else:
+                    d += 2 * dy
+        def line_high(x0, y0, x1, y1):
+            dx = x1 - x0
+            dy = y1 - y0
+            xi = 1
+            if dx < 0:
+                xi = -1
+                dx = -dx
+            d = 2 * dx - dy
+            x = x0
+
+            for y in range(y0, y1 + 1):
+                self.oddsvals[x][y] = 1
+                self.mappix[x, y] = 256
+
+                if d > 0:
+                    x += xi
+                    d += 2 * (dx - dy)
+                else:
+                    d += 2 * dx
+
+        if abs(y1 - y0) < abs(x1 - x0):
+            if x0 > x1:
+                line_low(x1, y1, x0, y0)
+            else:
+                line_low(x0, y0, x1, y1)
+        else:
+            if y0 > y1:
+                line_high(x1, y1, x0, y0)
+            else:
+                line_high(x0, y0, x1, y1)
 
     def laser_update_map(self):
         """
@@ -80,28 +140,42 @@ class Mapper(tk.Frame):
          
         for index, range_val in enumerate(self.laser.ranges):
             # Check to make sure it is a valid input
-            if math.isnan(range_val) or range_val == math.inf:
+            if math.isnan(range_val):
                 continue
+
+            # Update the clear space
+            distance = range_val
+            if range_val == math.inf:
+                distance = self.laser.range_max
             
-            # Get the angle of the laser relative to the world
+            # Determine x and y coordinate at the end of the scan
             angle_from_forward = self.laser.angle_min + index * self.laser.angle_increment
             full_angle = self.heading - angle_from_forward
             full_angle = full_angle % (2 * math.pi)
 
-            # Calculate the x and y position in the world coordinate system
-            x = self.pose.position.x + range_val * math.cos(full_angle)
-            y = self.pose.position.y + range_val * math.sin(full_angle)
+            x = self.pose.position.x + distance * math.cos(full_angle)
+            y = self.pose.position.y + distance * math.sin(full_angle)
 
-            # Scale the positions and translate the positions such that the origin is in the center of the map
+            # Scale the x and y and move the (0,0) to the center of the map
             x = int(x / MAPSCALE + MAPSIZE / 2)
             y = int(y / MAPSCALE + MAPSIZE / 2)
 
-            # Bounds checking
-            if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
-                continue
+            x = min(x, MAPSIZE)
+            y = min(y, MAPSIZE)
 
-            self.oddsvals[x][y] = 1
-            self.mappix[x, y] = 256
+            r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
+            r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
+            # Update free space
+            self.bresenham_open_update(r_x, r_y, x, y)
+
+            # Update around the obstacle with a Gaussian distribution
+            if range_val < math.inf:
+                # Bounds checking
+                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                    continue
+
+                self.oddsvals[x][y] = 1
+                self.mappix[x, y] = 256
     
     def sonar_update_map(self):
         if self.pose is None or self.sonar is None:
