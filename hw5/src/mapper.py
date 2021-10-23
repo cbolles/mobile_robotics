@@ -284,7 +284,9 @@ class Mapper(tk.Frame):
             obstacle_detected = range_val < SONAR_MAX_RANGE
             distance = min(range_val, SONAR_MAX_RANGE)
 
-            self.scan_update_map(distance, full_angle, self.sonar_std_dev_x,
+            sonar_std_dev_x = self.sonar_std_dev_x * distance / SONAR_MAX_RANGE
+
+            self.scan_update_map(distance, full_angle, sonar_std_dev_x,
                                  self.sonar_std_dev_y, obstacle_detected)
 
     def update_map(self):
