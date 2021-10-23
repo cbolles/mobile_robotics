@@ -36,7 +36,7 @@ MAPSIZE = 100
 MAPSCALE = 0.1
 # The number of pixels to consider around an obstancle to apply the gaussian
 # distribution
-POINTS_TO_CHECK = 5
+POINTS_TO_CHECK = 7
 
 class Mapper(tk.Frame):    
 
@@ -108,7 +108,8 @@ class Mapper(tk.Frame):
             for x in range(x0, x1 + 1):
                 if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
                     continue
-                self.oddsvals[x][y] -= 0.1
+                if self.oddsvals[x][y] > 0:
+                    self.oddsvals[x][y] -= 0.1
 
                 if d > 0:
                     y += yi
@@ -128,7 +129,8 @@ class Mapper(tk.Frame):
             for y in range(y0, y1 + 1):
                 if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
                     continue
-                self.oddsvals[x][y] -= 0.1
+                if self.oddsvals[x][y] > 0:
+                    self.oddsvals[x][y] -= 0.1
 
                 if d > 0:
                     x += xi
@@ -192,8 +194,9 @@ class Mapper(tk.Frame):
                 probability_exp = (-0.5 * np.transpose(pos_matrix - pos_mean_matrix)) * np.linalg.inv(sigma) * (pos_matrix - pos_mean_matrix)
                 probability = np.power(probability_base, probability_exp)[0, 0]
                 # TODO: Apply Markov's
-                self.oddsvals[x][y] = probability
-        
+                new_probability = (self.oddsvals[x][y] + probability) / 2
+                self.oddsvals[x][y] = new_probability
+
     def laser_update_map(self):
         """
         Handle updating the map based on the laser scan information.
@@ -228,7 +231,10 @@ class Mapper(tk.Frame):
 
             r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
             r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
-            # Update free space
+            
+            free_x = self.pose.position.x + max(distance - 1, 0) * math.cos(full_angle)
+            free_y = self.pose.position.y + max(distance - 1, 0) * math.sin(full_angle)
+ 
             self.bresenham_open_update(r_x, r_y, x, y)
 
             # Update around the obstacle with a Gaussian distribution
@@ -303,7 +309,6 @@ class Mapper(tk.Frame):
         self.lock_input = False
  
     def odo_update(self, odo_msg):
-        print(self.lock_input)
         self.new_pose = odo_msg.pose.pose
         self.new_heading = 2 * math.atan2(self.new_pose.orientation.z, self.new_pose.orientation.w) 
         if self.new_heading < 0:
