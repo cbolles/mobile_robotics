@@ -38,9 +38,15 @@ MAPSCALE = 0.1
 # distribution
 POINTS_TO_CHECK = 7
 
+DEFAULT_LASER_STD_DEV_X = 10
+DEFAULT_LASER_STD_DEV_Y = 5
+
+DEFAULT_SONAR_STD_DEV_X = 10
+DEFAULT_SONAR_STD_DEV_Y = 5
+
 class Mapper(tk.Frame):    
 
-    def __init__(self, sensor_source, *args, **kwargs):
+    def __init__(self, sensor_source, laser_std_dev_x, laser_std_dev_y, sonar_std_dev_x, sonar_std_dev_y, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.master.title("I'm the map!")
         self.master.minsize(width=MAPSIZE,height=MAPSIZE)
@@ -63,6 +69,11 @@ class Mapper(tk.Frame):
         self.pack()
 
         self.sensor_source = sensor_source
+
+        self.laser_std_dev_x = laser_std_dev_x
+        self.laser_std_dev_y = laser_std_dev_y
+        self.sonar_std_dev_x = sonar_std_dev_x
+        self.sonar_std_dev_y = sonar_std_dev_y
 
         self.new_pose = None
         self.pose = None
@@ -250,7 +261,8 @@ class Mapper(tk.Frame):
 
             obstacle_detected = range_val < self.laser.range_max
 
-            self.scan_update_map(range_val, full_angle, 10, 10, obstacle_detected)
+            self.scan_update_map(range_val, full_angle, self.laser_std_dev_x,
+                                 self.laser_std_dev_y, obstacle_detected)
     
     def sonar_update_map(self):
         if self.pose is None or self.sonar is None:
@@ -268,7 +280,8 @@ class Mapper(tk.Frame):
 
             obstacle_detected = range_val < math.inf
 
-            self.scan_update_map(range_val, full_angle, 10, 10, obstacle_detected)
+            self.scan_update_map(range_val, full_angle, self.sonar_std_dev_x,
+                                 self.sonar_std_dev_y, obstacle_detected)
 
     def update_map(self):
         """
@@ -323,6 +336,14 @@ def main():
     parser = ArgumentParser('ROS mapper and visualizer')
     parser.add_argument('sensor', help='Sensors to use to build the map',
                         default='all', choices=['sonar', 'laser', 'all'])
+    parser.add_argument('--laser_std_dev_x', help='STD deviation in MAPSCALE',
+                        type=float, default=DEFAULT_LASER_STD_DEV_X)
+    parser.add_argument('--laser_std_dev_y', help='STD deviation in MAPSCALE',
+                        type=float, default=DEFAULT_LASER_STD_DEV_Y)
+    parser.add_argument('--sonar_std_dev_x', help='STD deviation in MAPSCALE',
+                        type=float, default=DEFAULT_SONAR_STD_DEV_X)
+    parser.add_argument('--sonar_std_dev_y', help='STD deviation in MAPSCALE',
+                        type=float, default=DEFAULT_LASER_STD_DEV_Y)
     args = parser.parse_args()
 
     sensor_source = SensorSource.ALL
@@ -334,7 +355,9 @@ def main():
     rospy.init_node("mapper")
 
     root = tk.Tk()
-    m = Mapper(sensor_source, master=root,height=MAPSIZE,width=MAPSIZE)
+    m = Mapper(sensor_source, args.laser_std_dev_x, args.laser_std_dev_y,
+               args.sonar_std_dev_x, args.sonar_std_dev_y,
+               master=root,height=MAPSIZE,width=MAPSIZE)
     
     # ROS subscribers
     rospy.Subscriber("/r1/kinect_laser/scan", LaserScan, m.laser_update, queue_size=1)
