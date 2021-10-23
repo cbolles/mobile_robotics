@@ -232,9 +232,6 @@ class Mapper(tk.Frame):
             r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
             r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
             
-            free_x = self.pose.position.x + max(distance - 1, 0) * math.cos(full_angle)
-            free_y = self.pose.position.y + max(distance - 1, 0) * math.sin(full_angle)
- 
             self.bresenham_open_update(r_x, r_y, x, y)
 
             # Update around the obstacle with a Gaussian distribution
@@ -272,8 +269,18 @@ class Mapper(tk.Frame):
             if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
                 continue
 
-            self.oddsvals[x][y] = 1
-            self.mappix[x, y] = 256 
+            r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
+            r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
+            
+            self.bresenham_open_update(r_x, r_y, x, y)
+
+            # Update around the obstacle with a Gaussian distribution
+            if range_val < math.inf:
+                # Bounds checking
+                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                    continue
+
+                self.apply_gaussian(x, y, 10, 10, full_angle)
 
     def update_map(self):
         """
