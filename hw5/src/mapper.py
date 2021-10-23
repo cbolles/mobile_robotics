@@ -196,6 +196,40 @@ class Mapper(tk.Frame):
                 # TODO: Apply Markov's
                 new_probability = (self.oddsvals[x][y] + probability) / 2
                 self.oddsvals[x][y] = new_probability
+    
+    def scan_update_map(self, distance, angle, std_dev_x, std_dev_y, obstacle_detected):
+        """
+        Logic to update the map based on a single laser/sonar reading. This
+        will update the free space detected by the scan as well as updating
+        location impact by a detected obstacle.
+
+        :param distance: The distance from the robot that the sensor detected and obstacle
+        :param angle: The angle of the scan from the world coordinate perspective
+        :param std_dev_x: The standard deviation to apply for obstacles in the x direction
+        :param std_dev_y: The standard deviation to apply for obstacles in the y direction
+        :param obstacle_detected: Flag to represent if an obstacles was found by the sensor
+        """
+        x = self.pose.position.x + distance * math.cos(angle)
+        y = self.pose.position.y + distance * math.sin(angle)
+
+        # Scale the x and y and move the (0,0) to the center of the map
+        x = int(x / MAPSCALE + MAPSIZE / 2)
+        y = int(y / MAPSCALE + MAPSIZE / 2)
+
+        x = min(x, MAPSIZE)
+        y = min(y, MAPSIZE)
+
+        r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
+        r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
+        
+        self.bresenham_open_update(r_x, r_y, x, y)
+
+        # Update around the obstacle with a Gaussian distribution
+        if obstacle_detected:
+            # Bounds checking
+            if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                return
+            self.apply_gaussian(x, y, 10, 10, angle)
 
     def laser_update_map(self):
         """
@@ -209,38 +243,14 @@ class Mapper(tk.Frame):
             if math.isnan(range_val):
                 continue
 
-            # Update the clear space
-            distance = range_val
-            if range_val == math.inf:
-                distance = self.laser.range_max
-            
             # Determine x and y coordinate at the end of the scan
             angle_from_forward = self.laser.angle_min + index * self.laser.angle_increment
             full_angle = self.heading - angle_from_forward
             full_angle = full_angle % (2 * math.pi)
 
-            x = self.pose.position.x + distance * math.cos(full_angle)
-            y = self.pose.position.y + distance * math.sin(full_angle)
+            obstacle_detected = range_val < self.laser.range_max
 
-            # Scale the x and y and move the (0,0) to the center of the map
-            x = int(x / MAPSCALE + MAPSIZE / 2)
-            y = int(y / MAPSCALE + MAPSIZE / 2)
-
-            x = min(x, MAPSIZE)
-            y = min(y, MAPSIZE)
-
-            r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
-            r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
-            
-            self.bresenham_open_update(r_x, r_y, x, y)
-
-            # Update around the obstacle with a Gaussian distribution
-            if range_val < math.inf:
-                # Bounds checking
-                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
-                    continue
-
-                self.apply_gaussian(x, y, 10, 10, full_angle)
+            self.scan_update_map(range_val, full_angle, 10, 10, obstacle_detected)
     
     def sonar_update_map(self):
         if self.pose is None or self.sonar is None:
@@ -251,36 +261,14 @@ class Mapper(tk.Frame):
             # Naive approach, TODO: Treat sonar output as cone
             
             # Check to make sure the input is valid
-            if math.isnan(range_val) or range_val == math.inf:
+            if math.isnan(range_val):
                 continue
             
             full_angle = self.heading - math.radians(angle)
 
-            # Calculate the x and y position in the world coordinate system
-            x = self.pose.position.x + range_val * math.cos(full_angle)
-            y = self.pose.position.y + range_val * math.sin(full_angle)
+            obstacle_detected = range_val < math.inf
 
-            # Scale the positions and translate the positions such that the origin is in the center of the map
-            x = int(x / MAPSCALE + MAPSIZE / 2)
-            y = int(y / MAPSCALE + MAPSIZE / 2)
-
-
-            # Bounds checking
-            if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
-                continue
-
-            r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
-            r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
-            
-            self.bresenham_open_update(r_x, r_y, x, y)
-
-            # Update around the obstacle with a Gaussian distribution
-            if range_val < math.inf:
-                # Bounds checking
-                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
-                    continue
-
-                self.apply_gaussian(x, y, 10, 10, full_angle)
+            self.scan_update_map(range_val, full_angle, 10, 10, obstacle_detected)
 
     def update_map(self):
         """
