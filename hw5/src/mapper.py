@@ -19,6 +19,8 @@ from p2os_msgs.msg import SonarArray
 import math
 from argparse import ArgumentParser
 from enum import Enum
+import numpy as np
+import copy
 
 
 class SensorSource(Enum):
@@ -30,8 +32,11 @@ class SensorSource(Enum):
 # a reasonable size? depends on the scale of the map and the
 # size of the environment, of course:
 MAPSIZE = 100
-
+# Scale of each pixel
 MAPSCALE = 0.1
+# The number of pixels to consider around an obstancle to apply the gaussian
+# distribution
+POINTS_TO_CHECK = 5
 
 class Mapper(tk.Frame):    
 
@@ -49,7 +54,7 @@ class Mapper(tk.Frame):
         # this gives us directly memory access to the image pixels:
         self.mappix = self.themap.load()
         # keeping the odds separately saves one step per cell update:
-        self.oddsvals = [[1.0 for _ in range(MAPSIZE)] for _ in range(MAPSIZE)]
+        self.oddsvals = [[0.5 for _ in range(MAPSIZE)] for _ in range(MAPSIZE)]
 
         self.canvas = tk.Canvas(self,width=MAPSIZE, height=MAPSIZE)
 
@@ -59,15 +64,24 @@ class Mapper(tk.Frame):
 
         self.sensor_source = sensor_source
 
+        self.new_pose = None
         self.pose = None
+        self.new_laser = None
         self.laser = None
         self.sonar = None
 
         self.heading = 0
+        self.new_heading = 0
         # Used to stop updating the input while the mapping is taking place
         self.lock_input = False
 
+    def odds_to_pixel_value(self, odd):
+        return int((1 - odd) * 256)
+
     def update_image(self):
+        for x in range(0, MAPSIZE):
+            for y in range(0, MAPSIZE):
+                self.mappix[x, y] = self.odds_to_pixel_value(self.oddsvals[x][y])
         self.mapimage = ImageTk.PhotoImage(self.themap)       
         self.canvas.create_image(MAPSIZE/2, MAPSIZE/2, image = self.mapimage)
     
@@ -92,8 +106,9 @@ class Mapper(tk.Frame):
             y = y0
 
             for x in range(x0, x1 + 1):
-                self.oddsvals[x][y] = 1
-                self.mappix[x, y] = 256
+                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                    continue
+                self.oddsvals[x][y] -= 0.1
 
                 if d > 0:
                     y += yi
@@ -111,8 +126,9 @@ class Mapper(tk.Frame):
             x = x0
 
             for y in range(y0, y1 + 1):
-                self.oddsvals[x][y] = 1
-                self.mappix[x, y] = 256
+                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                    continue
+                self.oddsvals[x][y] -= 0.1
 
                 if d > 0:
                     x += xi
@@ -131,6 +147,53 @@ class Mapper(tk.Frame):
             else:
                 line_high(x0, y0, x1, y1)
 
+    def apply_gaussian(self, mean_x, mean_y, std_dev_x, std_dev_y, rotation):
+        """
+        Apply a Gaussian distribution of odds for the existance of
+        an object at a given location using the Markov's Assumption for
+        the previous odds of an obstacle existing at a point.
+
+        :param mean_x: The x coordinate to base the distribution around
+        :param mean_y: The y coordinate to base the distribution around
+        :param std_dev_x: The standard deviation of the reading in the x (not considering rotation)
+        :param std_dev_Y: The standard deviation of the reading in the y (not considering rotation)
+        :param rotation: The rotation of the robot
+        """
+        # Matrix of standard deviation assuming no rotation
+        c_matrix = np.matrix([
+                [pow(std_dev_x, 2), 0],
+                [0, pow(std_dev_y, 2)]])
+        # Rotation matrix to transform C
+        rotation_matrix = np.matrix([
+                [math.cos(rotation), -1 * math.sin(rotation)],
+                [math.sin(rotation), math.cos(rotation)]])
+        # Covariance relationship
+        sigma = np.matmul(np.matmul(rotation_matrix, c_matrix), np.transpose(rotation_matrix))
+        # Matrix representing the position of the center mean
+        pos_mean_matrix = np.matrix([
+                [mean_x],
+                [mean_y]])
+        
+        # Iterate over the points to calculate the probability for about the mean
+        start_x = int(mean_x - POINTS_TO_CHECK / 2)
+        start_y = int(mean_y - POINTS_TO_CHECK / 2)
+        end_x = int(mean_x + POINTS_TO_CHECK / 2)
+        end_y = int(mean_y + POINTS_TO_CHECK / 2)
+
+        for x in range(start_x, end_x + 1):
+            for y in range(start_y, end_y + 1):
+                if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
+                    continue
+                pos_matrix = np.matrix([
+                        [x],
+                        [y]])
+                
+                probability_base = 1 / 2 * math.pi * np.sqrt(np.linalg.det(sigma))
+                probability_exp = (-0.5 * np.transpose(pos_matrix - pos_mean_matrix)) * np.linalg.inv(sigma) * (pos_matrix - pos_mean_matrix)
+                probability = np.power(probability_base, probability_exp)[0, 0]
+                # TODO: Apply Markov's
+                self.oddsvals[x][y] = probability
+        
     def laser_update_map(self):
         """
         Handle updating the map based on the laser scan information.
@@ -174,8 +237,7 @@ class Mapper(tk.Frame):
                 if x < 0 or y < 0 or x >= MAPSIZE or y >= MAPSIZE:
                     continue
 
-                self.oddsvals[x][y] = 1
-                self.mappix[x, y] = 256
+                self.apply_gaussian(x, y, 10, 10, full_angle)
     
     def sonar_update_map(self):
         if self.pose is None or self.sonar is None:
@@ -215,11 +277,15 @@ class Mapper(tk.Frame):
         The map will also not update if the sensor values are not present,
         or if the map is actively being updated.
         """
-        if self.pose is None or self.sonar is None or self.lock_input:
+        if self.new_pose is None or self.sonar is None or self.lock_input:
             return
 
         # Lock input from coming in while mapping
         self.lock_input = True
+
+        self.laser = copy.deepcopy(self.new_laser)
+        self.pose = copy.deepcopy(self.new_pose)
+        self.heading = self.new_heading
 
         if self.sensor_source == SensorSource.ALL:
             self.laser_update_map()
@@ -235,34 +301,22 @@ class Mapper(tk.Frame):
 
         # Unlock input
         self.lock_input = False
-
-    def odds_to_pixel_value(self, odd):
-        return (int(odd * 256),)
-    
+ 
     def odo_update(self, odo_msg):
-        if not self.lock_input:
-            self.pose = odo_msg.pose.pose
-            self.heading = 2 * math.atan2(self.pose.orientation.z, self.pose.orientation.w) 
-            if self.heading < 0:
-                self.heading += 2 * math.pi
-
+        print(self.lock_input)
+        self.new_pose = odo_msg.pose.pose
+        self.new_heading = 2 * math.atan2(self.new_pose.orientation.z, self.new_pose.orientation.w) 
+        if self.new_heading < 0:
+            self.new_heading += 2 * math.pi
     
     def sonar_update(self, sonar_msg):
         if not self.lock_input:
             self.sonar = sonar_msg.ranges
-
+            self.update_map() 
 
     def laser_update(self, lmsg):
-        if self.pose is None:
-            return
-        if self.sonar is None:
-            return
-        if self.lock_input:
-            return
-        if not self.lock_input:
-            self.laser = lmsg
-        self.update_map() 
-        
+        self.new_laser = lmsg
+
                 
 def main():
     # Argument parsing

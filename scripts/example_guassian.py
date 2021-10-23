@@ -85,7 +85,7 @@ def main():
     root = tk.Tk()
     visual = Visualizer(master=root,height=MAPSIZE,width=MAPSIZE)
 
-    visual.draw_gaussian(0, 0, 10, 20, math.radians(45))
+    visual.draw_gaussian(200, 20, 10, 20, math.radians(45))
 
     visual.update_image()
     root.mainloop()
