@@ -31,7 +31,7 @@ class SensorSource(Enum):
 
 # a reasonable size? depends on the scale of the map and the
 # size of the environment, of course:
-MAPSIZE = 100
+MAPSIZE = 200
 # Scale of each pixel
 MAPSCALE = 0.1
 # The number of pixels to consider around an obstancle to apply the gaussian
@@ -43,6 +43,8 @@ DEFAULT_LASER_STD_DEV_Y = 5
 
 DEFAULT_SONAR_STD_DEV_X = 10
 DEFAULT_SONAR_STD_DEV_Y = 5
+
+SONAR_MAX_RANGE = 3
 
 class Mapper(tk.Frame):    
 
@@ -260,8 +262,9 @@ class Mapper(tk.Frame):
             full_angle = full_angle % (2 * math.pi)
 
             obstacle_detected = range_val < self.laser.range_max
+            distance = min(range_val, self.laser.range_max)
 
-            self.scan_update_map(range_val, full_angle, self.laser_std_dev_x,
+            self.scan_update_map(distance, full_angle, self.laser_std_dev_x,
                                  self.laser_std_dev_y, obstacle_detected)
     
     def sonar_update_map(self):
@@ -278,9 +281,10 @@ class Mapper(tk.Frame):
             
             full_angle = self.heading - math.radians(angle)
 
-            obstacle_detected = range_val < math.inf
+            obstacle_detected = range_val < SONAR_MAX_RANGE
+            distance = min(range_val, SONAR_MAX_RANGE)
 
-            self.scan_update_map(range_val, full_angle, self.sonar_std_dev_x,
+            self.scan_update_map(distance, full_angle, self.sonar_std_dev_x,
                                  self.sonar_std_dev_y, obstacle_detected)
 
     def update_map(self):
