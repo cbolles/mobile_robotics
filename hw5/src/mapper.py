@@ -46,7 +46,7 @@ DEFAULT_SONAR_STD_DEV_Y = 5
 
 SONAR_MAX_RANGE = 3
 
-class Mapper(tk.Frame):    
+class Mapper(tk.Frame):
 
     def __init__(self, sensor_source, laser_std_dev_x, laser_std_dev_y, sonar_std_dev_x, sonar_std_dev_y, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
@@ -95,9 +95,9 @@ class Mapper(tk.Frame):
         for x in range(0, MAPSIZE):
             for y in range(0, MAPSIZE):
                 self.mappix[x, y] = self.odds_to_pixel_value(self.oddsvals[x][y])
-        self.mapimage = ImageTk.PhotoImage(self.themap)       
+        self.mapimage = ImageTk.PhotoImage(self.themap)
         self.canvas.create_image(MAPSIZE/2, MAPSIZE/2, image = self.mapimage)
-    
+
     def bresenham_open_update(self, x0, y0, x1, y1):
         """
         Update the area along the line as determined by the provided
@@ -188,7 +188,7 @@ class Mapper(tk.Frame):
         pos_mean_matrix = np.matrix([
                 [mean_x],
                 [mean_y]])
-        
+
         # Iterate over the points to calculate the probability for about the mean
         start_x = int(mean_x - POINTS_TO_CHECK / 2)
         start_y = int(mean_y - POINTS_TO_CHECK / 2)
@@ -202,14 +202,14 @@ class Mapper(tk.Frame):
                 pos_matrix = np.matrix([
                         [x],
                         [y]])
-                
+
                 probability_base = 1 / 2 * math.pi * np.sqrt(np.linalg.det(sigma))
                 probability_exp = (-0.5 * np.transpose(pos_matrix - pos_mean_matrix)) * np.linalg.inv(sigma) * (pos_matrix - pos_mean_matrix)
                 probability = np.power(probability_base, probability_exp)[0, 0]
                 # TODO: Apply Markov's
                 new_probability = (self.oddsvals[x][y] + probability) / 2
                 self.oddsvals[x][y] = new_probability
-    
+
     def scan_update_map(self, distance, angle, std_dev_x, std_dev_y, obstacle_detected):
         """
         Logic to update the map based on a single laser/sonar reading. This
@@ -234,7 +234,7 @@ class Mapper(tk.Frame):
 
         r_x = int(self.pose.position.x / MAPSCALE + MAPSIZE / 2)
         r_y = int(self.pose.position.y / MAPSCALE + MAPSIZE / 2)
-        
+
         self.bresenham_open_update(r_x, r_y, x, y)
 
         # Update around the obstacle with a Gaussian distribution
@@ -250,7 +250,7 @@ class Mapper(tk.Frame):
         """
         if self.pose is None or self.laser is None:
             return
-         
+
         for index, range_val in enumerate(self.laser.ranges):
             # Check to make sure it is a valid input
             if math.isnan(range_val):
@@ -266,7 +266,7 @@ class Mapper(tk.Frame):
 
             self.scan_update_map(distance, full_angle, self.laser_std_dev_x,
                                  self.laser_std_dev_y, obstacle_detected)
-    
+
     def sonar_update_map(self):
         if self.pose is None or self.sonar is None:
             return
@@ -274,11 +274,11 @@ class Mapper(tk.Frame):
         # Loop over all the sonar ranges
         for range_val, angle in zip(self.sonar, [90, 50, 30, 10, -10, -30, -50, -90]):
             # Naive approach, TODO: Treat sonar output as cone
-            
+
             # Check to make sure the input is valid
             if math.isnan(range_val):
                 continue
-            
+
             full_angle = self.heading - math.radians(angle)
 
             obstacle_detected = range_val < SONAR_MAX_RANGE
@@ -314,29 +314,29 @@ class Mapper(tk.Frame):
             self.laser_update_map()
         elif self.sensor_source == SensorSource.SONAR:
             self.sonar_update_map()
-        
+
         # this puts the image update on the GUI thread, not ROS thread!
         # also note only one image update per scan, not per map-cell update
-        self.after(0,self.update_image)    
+        self.after(0,self.update_image)
 
         # Unlock input
         self.lock_input = False
- 
+
     def odo_update(self, odo_msg):
         self.new_pose = odo_msg.pose.pose
-        self.new_heading = 2 * math.atan2(self.new_pose.orientation.z, self.new_pose.orientation.w) 
+        self.new_heading = 2 * math.atan2(self.new_pose.orientation.z, self.new_pose.orientation.w)
         if self.new_heading < 0:
             self.new_heading += 2 * math.pi
-    
+
     def sonar_update(self, sonar_msg):
         if not self.lock_input:
             self.sonar = sonar_msg.ranges
-            self.update_map() 
+            self.update_map()
 
     def laser_update(self, lmsg):
         self.new_laser = lmsg
 
-                
+
 def main():
     # Argument parsing
     parser = ArgumentParser('ROS mapper and visualizer')
@@ -364,12 +364,12 @@ def main():
     m = Mapper(sensor_source, args.laser_std_dev_x, args.laser_std_dev_y,
                args.sonar_std_dev_x, args.sonar_std_dev_y,
                master=root,height=MAPSIZE,width=MAPSIZE)
-    
+
     # ROS subscribers
-    rospy.Subscriber("/r1/kinect_laser/scan", LaserScan, m.laser_update, queue_size=1)
-    rospy.Subscriber("/r1/odom", Odometry, m.odo_update, queue_size=1)
-    rospy.Subscriber("/r1/sonar", SonarArray, m.sonar_update, queue_size=1)
-    
+    rospy.Subscriber("/scan", LaserScan, m.laser_update, queue_size=1)
+    rospy.Subscriber("/pose", Odometry, m.odo_update, queue_size=1)
+    rospy.Subscriber("/sonar", SonarArray, m.sonar_update, queue_size=1)
+
     # the GUI gets the main thread, so all your work must be in callbacks.
     root.mainloop()
 
