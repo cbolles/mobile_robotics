@@ -253,7 +253,7 @@ class Mapper(tk.Frame):
 
         for index, range_val in enumerate(self.laser.ranges):
             # Check to make sure it is a valid input
-            if math.isnan(range_val):
+            if math.isnan(range_val) or range_val >= self.laser.range_max:
                 continue
 
             # Determine x and y coordinate at the end of the scan
